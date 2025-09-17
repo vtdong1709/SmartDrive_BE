@@ -1,13 +1,17 @@
 import dotenv from "dotenv";
+dotenv.config();
+
 import app from "./app.js";
 import connectDB from "./src/config/db.js";
-
-dotenv.config();
+import { getSwaggerSpec, swaggerUi } from "./src/config/swagger.js";
 
 const PORT = process.env.PORT || 5000;
 
 connectDB();
 
+//Swagger docs
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(getSwaggerSpec()));
+
 app.listen(PORT, () => {
-    console.log(`Server is running on PORT ${PORT}`);
-})
+  console.log(`Server is running on PORT ${PORT}`);
+});
