@@ -21,15 +21,41 @@ export const getUserById = async (userId) => {
  * @returns {Promise<User>}
  */
 export const updateUserService = async (userId, updateData) => {
-  const { fullName, phone, avatar } = updateData;
+  // Lấy ra các trường cho phép cập nhật từ body của request
+  const {
+    fullName,
+    phone,
+    avatar,
+    dateOfBirth,
+    gender,
+    savedAddresses,
+    paymentMethods,
+  } = updateData;
 
-  // Chỉ cho phép cập nhật một số trường nhất định
-  const allowedUpdates = { fullName, phone, avatar };
+  // Tạo object chứa các trường cần cập nhật
+  const allowedUpdates = {
+    fullName,
+    phone,
+    avatar,
+    dateOfBirth,
+    gender,
+    savedAddresses,
+    paymentMethods,
+  };
 
-  const user = await User.findByIdAndUpdate(userId, allowedUpdates, {
-    new: true,
-    runValidators: true,
-  }).select("-password");
+  // Loại bỏ các trường undefined để không ghi đè dữ liệu không mong muốn
+  Object.keys(allowedUpdates).forEach(
+    (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key]
+  );
+  
+  const user = await User.findByIdAndUpdate(userId, 
+    { $set: allowedUpdates }, // Sử dụng $set để cập nhật các trường được cung cấp
+    {
+      new: true,
+      runValidators: true,
+      context: 'query'
+    }
+  ).select("-password");
 
   if (!user) {
     throw new errorResponse("Không tìm thấy người dùng", 404);

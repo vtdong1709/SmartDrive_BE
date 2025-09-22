@@ -26,6 +26,7 @@ export const getMyProfile = async (req, res) => {
  */
 export const updateUserProfile = async (req, res) => {
   try {
+    // req.body sẽ chứa tất cả thông tin người dùng muốn cập nhật
     const user = await updateUserService(req.user.id, req.body);
     res.status(200).json(successResponse("Cập nhật thành công", user));
   } catch (error) {

@@ -39,16 +39,63 @@ const router = express.Router();
  *             properties:
  *               fullName:
  *                 type: string
- *                 description: Họ và tên mới
- *                 example: "Nguyễn Văn B"
  *               phone:
  *                 type: string
- *                 description: Số điện thoại mới
- *                 example: "0987654321"
  *               avatar:
  *                 type: string
- *                 description: URL ảnh đại diện mới
- *                 example: "https://example.com/avatar.jpg"
+ *               dateOfBirth:
+ *                 type: string
+ *                 format: date
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other]
+ *               savedAddresses:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     name:
+ *                       type: string
+ *                     fullAddress:
+ *                       type: string
+ *                     location:
+ *                       type: object
+ *                       properties:
+ *                         coordinates:
+ *                           type: array
+ *                           items:
+ *                             type: number
+ *               paymentMethods:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     provider:
+ *                       type: string
+ *                       enum: [momo, vnpay, paypal]
+ *                     customerId:
+ *                       type: string
+ *                     isDefault:
+ *                       type: boolean
+ *             example:
+ *               fullName: "Nguyễn Văn B"
+ *               phone: "0987654322"
+ *               avatar: "https://example.com/new-avatar.jpg"
+ *               dateOfBirth: "1995-10-20"
+ *               gender: "male"
+ *               savedAddresses:
+ *                 - name: "Nhà"
+ *                   fullAddress: "123 Đường ABC, Phường 1, Quận 2, TP.HCM"
+ *                   location:
+ *                     coordinates: [106.7000, 10.7769]
+ *                 - name: "Công ty"
+ *                   fullAddress: "456 Đường XYZ, Phường 3, Quận 4, TP.HCM"
+ *                   location:
+ *                     coordinates: [106.7011, 10.7788]
+ *               paymentMethods:
+ *                 - provider: "momo"
+ *                   customerId: "momo_customer_id_12345"
+ *                   isDefault: true
  *     responses:
  *       '200':
  *         description: Cập nhật thành công
@@ -126,8 +173,11 @@ router.get("/:id", authenticate, authorizeRoles("admin"), getUserDetails);
  *                 type: string
  *               phone:
  *                 type: string
- *               avatar:
+ *               role:
  *                 type: string
+ *                 enum: [renter, staff, admin]
+ *               verified:
+ *                 type: boolean
  *     responses:
  *       '200':
  *         description: Cập nhật thành công
@@ -157,6 +207,8 @@ router.put("/:id", authenticate, authorizeRoles("admin"), updateUserByAdmin);
  *       '404':
  *         description: Không tìm thấy người dùng
  */
+router.get("/:id", authenticate, authorizeRoles("admin"), getUserDetails);
+router.put("/:id", authenticate, authorizeRoles("admin"), updateUserByAdmin);
 router.delete("/:id", authenticate, authorizeRoles("admin"), deleteUser);
 
 export default router;
