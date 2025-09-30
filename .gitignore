@@ -50,4 +50,3 @@ pids/
 *.pid.lock
 nodemon-debug.log
 bun.lock
-package-lock.json
