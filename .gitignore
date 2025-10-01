@@ -49,3 +49,4 @@ pids/
 *.seed
 *.pid.lock
 nodemon-debug.log
+bun.lock
