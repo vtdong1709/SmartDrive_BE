@@ -23,5 +23,16 @@ export const sendOtpEmail = async ({ to, name, otpCode, type }) => {
     html: otpTemplate({ name, otp: otpCode }),
   };
 
-  await transporter.sendMail(mailOptions);
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("SMTP sendMail accepted:", info.accepted);
+    if (info.rejected && info.rejected.length) {
+      console.warn("SMTP sendMail rejected:", info.rejected);
+    }
+    return info;
+  } catch (err) {
+    console.error("SMTP sendMail error:", err?.message || err);
+    
+    throw err;
+  }
 };
