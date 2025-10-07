@@ -19,13 +19,12 @@ export const createBooking = async (req, res) => {
         };
         console.log(bookingData);
         const booking = await createBookingService(bookingData);
-        res.status(200).json(successResponse("Đặt xe thành công", booking));
+        res.status(200).json(successResponse("Đặt tài xế thành công", booking));
     } catch (error) {
         res
         .status(error.code || 500)
         .json(errorResponse(error.message, error.code));
     }
-    
 };
 
 export const getBookingById = async (req, res) => {
@@ -114,11 +113,12 @@ export const getBookingsByStatus = async (req, res) => {
 
 export const calculateFare = async (req, res) => {
     try {
-      const { pickupLocation, dropoffLocation, startTime } = req.body;
+      const { pickupLocation, dropoffLocation, startTime, serviceType } = req.body;
       const result = await calculateFareService(
         pickupLocation,
         dropoffLocation,
-        startTime
+        startTime,
+        serviceType
       );
   
       res.status(200).json(successResponse("Tính toán giá cước thành công", result));
@@ -138,5 +138,4 @@ export const calculateFare = async (req, res) => {
 //         .json(errorResponse(error.message, error.code));
 //     }
 // }
-
 
