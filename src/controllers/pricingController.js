@@ -5,7 +5,7 @@ import { errorResponse, successResponse } from "../utils/apiResponse.js";
   export const createPricing = async (req, res) => {
     try {
       const pricing = await createPricingService(req.body);
-      res.status(201).json(successResponse("Thiết lập giá thành công.",  pricing ));
+      res.status(200).json(successResponse("Thiết lập giá thành công.",  pricing ));
     } catch (error) {
       res.status(400).json(errorResponse(error.message, error.code));
     }
