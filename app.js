@@ -6,6 +6,8 @@ import driverRoutes from "./src/routes/driverRoutes.js";
 import driverApplicationRoutes from "./src/routes/driverApplicationRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
 
+import bookingRoutes from "./src/routes/bookingRoutes.js";
+import pricingRoutes from "./src/routes/pricingRoutes.js";
 const app = express();
 app.use(express.json());
 
