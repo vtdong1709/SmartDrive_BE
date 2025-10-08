@@ -31,6 +31,13 @@ const router = express.Router();
 
 /**
  * @swagger
+ * tags:
+ *   - name: Driver
+ *     description: API chỉ dành cho tài xế đã được duyệt
+ */
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     DriverPersonal:
@@ -50,28 +57,7 @@ const router = express.Router();
  *         idNumber:
  *           type: string
  *           example: "079123456789"
- *     DriverVehicle:
- *       type: object
- *       required: [type, brand, model, year, plate, color]
- *       properties:
- *         type:
- *           type: string
- *           example: "motorbike"
- *         brand:
- *           type: string
- *           example: "Honda"
- *         model:
- *           type: string
- *           example: "Wave RSX"
- *         year:
- *           type: integer
- *           example: 2020
- *         plate:
- *           type: string
- *           example: "59A1-123.45"
- *         color:
- *           type: string
- *           example: "black"
+ *     # Vehicle schema removed
  *     DriverDocuments:
  *       type: object
  *       required: [idFrontUrl, idBackUrl, driverLicenseFrontUrl, driverLicenseBackUrl]
@@ -118,8 +104,7 @@ const router = express.Router();
   *             enum: [drive_by_hour, city_service, long_distance, interprovincial_tourism, vip, premium_clients, airport_pickup, airport_specialist]
  *         personal:
  *           $ref: '#/components/schemas/DriverPersonal'
- *         vehicle:
- *           $ref: '#/components/schemas/DriverVehicle'
+ *         # vehicle removed
  *         documents:
  *           $ref: '#/components/schemas/DriverDocuments'
  *         submittedAt:
@@ -150,15 +135,14 @@ const router = express.Router();
  *           enum: [online, offline]
  *     DriverApplicationDraftRequest:
  *       type: object
- *       required: [personal, vehicle, licenseNumber, licenseExpiry, yearsExperience, services]
+ *       required: [personal, licenseNumber, licenseExpiry, yearsExperience, services]
  *       properties:
   *         applicationId:
   *           type: string
   *           description: Optional. If provided, updates the specified draft (must belong to user)
  *         personal:
  *           $ref: '#/components/schemas/DriverPersonal'
- *         vehicle:
- *           $ref: '#/components/schemas/DriverVehicle'
+ *         # vehicle removed
  *         documents:
  *           $ref: '#/components/schemas/DriverDocuments'
  *         licenseNumber:
@@ -212,7 +196,7 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/applications:
+ * /api/driver/applications:
  *   post:
  *     summary: Tạo hoặc cập nhật hồ sơ nháp
  *     tags: [Driver Application]
@@ -233,13 +217,7 @@ const router = express.Router();
   *                   phone: "0912345678"
   *                   email: "user@example.com"
   *                   idNumber: "079123456789"
-  *                 vehicle:
-  *                   type: "car"
-  *                   brand: "Toyota"
-  *                   model: "Vios"
-  *                   year: 2020
-  *                   plate: "59A1-123.45"
-  *                   color: "black"
+ *                 # vehicle removed
  *                 documents:
   *                   idFrontUrl: "https://files.example.com/id-front.jpg"
   *                   idBackUrl: "https://files.example.com/id-back.jpg"
@@ -258,13 +236,7 @@ const router = express.Router();
   *                   phone: "0912345678"
   *                   email: "user@example.com"
   *                   idNumber: "079123456789"
-  *                 vehicle:
-  *                   type: "car"
-  *                   brand: "Toyota"
-  *                   model: "Vios"
-  *                   year: 2020
-  *                   plate: "59A1-123.45"
-  *                   color: "black"
+ *                 # vehicle removed
  *                 documents:
   *                   idFrontUrl: "https://files.example.com/id-front.jpg"
   *                   idBackUrl: "https://files.example.com/id-back.jpg"
@@ -304,7 +276,7 @@ router.post("/applications", authenticate, validateDraftApplication, upsertDraft
 
 /**
  * @swagger
- * /api/applications/me:
+ * /api/driver/applications/me:
  *   get:
  *     summary: Lấy tất cả hồ sơ của tôi
  *     tags: [Driver Application]
@@ -331,7 +303,7 @@ router.get("/applications/me", authenticate, getMyApplication);
 
 /**
  * @swagger
- * /api/applications/{id}/submit:
+ * /api/driver/applications/{id}/submit:
  *   post:
  *     summary: Gửi hồ sơ để duyệt
  *     tags: [Driver Application]
@@ -362,7 +334,7 @@ router.post("/applications/:id/submit", authenticate, validateSubmitApplication,
 
 /**
  * @swagger
- * /api/applications/{id}:
+ * /api/driver/applications/{id}:
  *   patch:
  *     summary: Cập nhật hồ sơ theo id (chỉ nháp/bị từ chối)
  *     tags: [Driver Application]
@@ -397,7 +369,7 @@ router.patch("/applications/:id", authenticate, validateApplicationId, updateMyA
 
 /**
  * @swagger
- * /api/applications/{id}:
+ * /api/driver/applications/{id}:
  *   delete:
  *     summary: Xóa hồ sơ theo id (chỉ nháp/bị từ chối)
  *     tags: [Driver Application]
@@ -428,177 +400,14 @@ router.patch("/applications/:id", authenticate, validateApplicationId, updateMyA
  */
 router.delete("/applications/:id", authenticate, validateApplicationId, deleteMyApplication);
 
-/**
- * @swagger
- * tags:
- *   - name: Admin-Drivers
- *     description: API cho admin duyệt hồ sơ tài xế
- */
+// Admin driver endpoints moved to adminRoutes.js
 
 /**
  * @swagger
- * /api/admin/driver-applications:
- *   get:
-  *     summary: (Admin/Staff) Danh sách hồ sơ tài xế
- *     tags: [Admin-Drivers]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [draft, pending, approved, rejected]
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
-  *       - in: query
-  *         name: createdFrom
-  *         schema:
-  *           type: string
-  *           format: date-time
-  *         description: ISO date, filter createdAt >= createdFrom
-  *       - in: query
-  *         name: createdTo
-  *         schema:
-  *           type: string
-  *           format: date-time
-  *         description: ISO date, filter createdAt <= createdTo
-  *       - in: query
-  *         name: yearsMin
-  *         schema:
-  *           type: integer
-  *       - in: query
-  *         name: yearsMax
-  *         schema:
-  *           type: integer
-  *       - in: query
-  *         name: services
-  *         schema:
-  *           type: string
-  *         description: CSV of services (e.g. drive_by_hour,city_service)
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Thành công
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/PaginatedApplications'
- */
-router.get("/admin/driver-applications", authenticate, authorizeRoles("admin", "staff"), listApplications);
-
-/**
- * @swagger
- * /api/admin/driver-applications/{id}:
- *   get:
- *     summary: (Admin/Staff) Chi tiết hồ sơ
- *     tags: [Admin-Drivers]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Thành công
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/DriverApplication'
- *       404:
- *         description: Không tìm thấy hồ sơ
- */
-router.get("/admin/driver-applications/:id", authenticate, authorizeRoles("admin", "staff"), getApplicationById);
-
-/**
- * @swagger
- * /api/admin/driver-applications/{id}/approve:
- *   post:
- *     summary: (Admin) Duyệt hồ sơ
- *     tags: [Admin-Drivers]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Duyệt thành công
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       type: object
- *                       properties:
- *                         app:
- *                           $ref: '#/components/schemas/DriverApplication'
- *                         profile:
- *                           $ref: '#/components/schemas/DriverProfile'
- */
-router.post("/admin/driver-applications/:id/approve", authenticate, authorizeRoles("admin"), approveApplication);
-
-/**
- * @swagger
- * /api/admin/driver-applications/{id}/reject:
- *   post:
- *     summary: (Admin) Từ chối hồ sơ
- *     tags: [Admin-Drivers]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [reason]
- *             properties:
- *               reason:
- *                 type: string
- *     responses:
- *       200:
- *         description: Từ chối thành công
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/ApiResponse'
- *                 - type: object
- *                   properties:
- *                     data:
- *                       $ref: '#/components/schemas/DriverApplication'
- */
-router.post(
-  "/admin/driver-applications/:id/reject",
-  authenticate,
-  authorizeRoles("admin"),
-  validateRejectApplication,
-  rejectApplication
-);
-
-/**
- * @swagger
- * /api/drivers/me/availability:
+ * /api/driver/me/availability:
  *   patch:
  *     summary: Bật/tắt trạng thái sẵn sàng nhận cuốc (chỉ tài xế đã duyệt)
- *     tags: [Driver Application]
+ *     tags: [Driver]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -620,7 +429,7 @@ router.post(
  *                     data:
  *                       $ref: '#/components/schemas/DriverProfile'
  */
-router.patch("/drivers/me/availability", authenticate, authorizeRoles("driver"), validateAvailability, setMyAvailability);
+router.patch("/me/availability", authenticate, authorizeRoles("driver"), validateAvailability, setMyAvailability);
 
 export default router;
 

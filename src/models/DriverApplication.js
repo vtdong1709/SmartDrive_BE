@@ -10,17 +10,7 @@ const personalSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const vehicleSchema = new mongoose.Schema(
-  {
-    type: { type: String, required: true },
-    brand: { type: String, required: true },
-    model: { type: String, required: true },
-    year: { type: Number, required: true },
-    plate: { type: String, required: true },
-    color: { type: String, required: true },
-  },
-  { _id: false }
-);
+// vehicle info removed from application
 
 const documentsSchema = new mongoose.Schema(
   {
@@ -43,7 +33,6 @@ const driverApplicationSchema = new mongoose.Schema(
     },
     rejectionReason: { type: String, default: null },
     personal: { type: personalSchema, required: true },
-    vehicle: { type: vehicleSchema, required: true },
     documents: { type: documentsSchema, default: {} },
     licenseNumber: { type: String, default: null },
     licenseExpiry: { type: Date, default: null },
