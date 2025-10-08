@@ -10,6 +10,7 @@ import {
 } from "../controllers/authController.js";
 import { validateRegister } from "../middlewares/validateAuth.js";
 import { authenticate } from "../middlewares/authMiddleware.js";
+import { getMyProfile } from "../controllers/userController.js";
 
 const router = express.Router();
 
@@ -588,5 +589,21 @@ router.post("/verify-email", verifyEmailController);
  *         description: Lỗi server
  */
 router.post("/reset-password", resetPasswordController);
+
+/**
+ * @swagger
+ * /api/auth/me:
+ *   get:
+ *     summary: Lấy thông tin cá nhân của tôi
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lấy thông tin thành công.
+ *       401:
+ *         description: Unauthorized - Token không hợp lệ hoặc hết hạn.
+ */
+router.get("/me", authenticate, getMyProfile);
 
 export default router;
