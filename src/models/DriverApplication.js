@@ -10,6 +10,16 @@ const personalSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const addressSchema = new mongoose.Schema(
+  {
+    province: { type: String, required: true, trim: true }, // Tỉnh/Thành phố
+    district: { type: String, required: true, trim: true }, // Quận/Huyện
+    ward: { type: String, required: true, trim: true }, // Phường/Xã
+    specificAddress: { type: String, required: true, trim: true }, // Địa chỉ cụ thể
+  },
+  { _id: false }
+);
+
 // vehicle info removed from application
 
 const documentsSchema = new mongoose.Schema(
@@ -33,6 +43,7 @@ const driverApplicationSchema = new mongoose.Schema(
     },
     rejectionReason: { type: String, default: null },
     personal: { type: personalSchema, required: true },
+    address: { type: addressSchema, required: true },
     documents: { type: documentsSchema, default: {} },
     licenseNumber: { type: String, default: null },
     licenseExpiry: { type: Date, default: null },
@@ -40,14 +51,10 @@ const driverApplicationSchema = new mongoose.Schema(
     services: {
       type: [String],
       enum: [
-        "drive_by_hour",
-        "city_service",
-        "long_distance",
-        "interprovincial_tourism",
-        "vip",
-        "premium_clients",
-        "airport_pickup",
-        "airport_specialist",
+        "dich_vu_tai_xe_theo_gio",      // Dịch vụ tài xế theo giờ
+        "dich_vu_tai_xe_theo_cay_so",   // Dịch vụ tài xế theo cây số
+        "dich_vu_tai_xe_theo_ngay",     // Dịch vụ tài xế theo ngày
+        "dich_vu_tai_xe_lien_tinh",     // Dịch vụ tài xế liên tỉnh
       ],
       default: [],
     },

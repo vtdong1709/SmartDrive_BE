@@ -57,6 +57,26 @@ const router = express.Router();
  *         idNumber:
  *           type: string
  *           example: "079123456789"
+ *     DriverAddress:
+ *       type: object
+ *       required: [province, district, ward, specificAddress]
+ *       properties:
+ *         province:
+ *           type: string
+ *           example: "Hồ Chí Minh"
+ *           description: "Tỉnh/Thành phố"
+ *         district:
+ *           type: string
+ *           example: "Quận 1"
+ *           description: "Quận/Huyện"
+ *         ward:
+ *           type: string
+ *           example: "Phường Bến Nghé"
+ *           description: "Phường/Xã"
+ *         specificAddress:
+ *           type: string
+ *           example: "123 Đường Nguyễn Huệ"
+ *           description: "Địa chỉ cụ thể"
  *     # Vehicle schema removed
  *     DriverDocuments:
  *       type: object
@@ -101,9 +121,11 @@ const router = express.Router();
   *           type: array
   *           items:
   *             type: string
-  *             enum: [drive_by_hour, city_service, long_distance, interprovincial_tourism, vip, premium_clients, airport_pickup, airport_specialist]
+  *             enum: [dich_vu_tai_xe_theo_gio, dich_vu_tai_xe_theo_cay_so, dich_vu_tai_xe_theo_ngay, dich_vu_tai_xe_lien_tinh]
  *         personal:
  *           $ref: '#/components/schemas/DriverPersonal'
+ *         address:
+ *           $ref: '#/components/schemas/DriverAddress'
  *         # vehicle removed
  *         documents:
  *           $ref: '#/components/schemas/DriverDocuments'
@@ -135,13 +157,15 @@ const router = express.Router();
  *           enum: [online, offline]
  *     DriverApplicationDraftRequest:
  *       type: object
- *       required: [personal, licenseNumber, licenseExpiry, yearsExperience, services]
+ *       required: [personal, address, licenseNumber, licenseExpiry, yearsExperience, services]
  *       properties:
   *         applicationId:
   *           type: string
   *           description: Optional. If provided, updates the specified draft (must belong to user)
  *         personal:
  *           $ref: '#/components/schemas/DriverPersonal'
+ *         address:
+ *           $ref: '#/components/schemas/DriverAddress'
  *         # vehicle removed
  *         documents:
  *           $ref: '#/components/schemas/DriverDocuments'
@@ -159,7 +183,7 @@ const router = express.Router();
  *           type: array
  *           items:
  *             type: string
- *             enum: [drive_by_hour, city_service, long_distance, interprovincial_tourism, vip, premium_clients, airport_pickup, airport_specialist]
+ *             enum: [dich_vu_tai_xe_theo_gio, dich_vu_tai_xe_theo_cay_so, dich_vu_tai_xe_theo_ngay, dich_vu_tai_xe_lien_tinh]
  *     AvailabilityRequest:
  *       type: object
  *       required: [online]
@@ -209,7 +233,7 @@ const router = express.Router();
  *           schema:
  *             $ref: '#/components/schemas/DriverApplicationDraftRequest'
   *           examples:
- *             create:
+  *             create:
   *               summary: Tạo hồ sơ nháp mới (đủ tài liệu bắt buộc)
   *               value:
   *                 personal:
@@ -217,6 +241,11 @@ const router = express.Router();
   *                   phone: "0912345678"
   *                   email: "user@example.com"
   *                   idNumber: "079123456789"
+ *                 address:
+ *                   province: "Hồ Chí Minh"
+ *                   district: "Quận 1"
+ *                   ward: "Phường Bến Nghé"
+ *                   specificAddress: "123 Đường Nguyễn Huệ"
  *                 # vehicle removed
  *                 documents:
   *                   idFrontUrl: "https://files.example.com/id-front.jpg"
@@ -226,7 +255,7 @@ const router = express.Router();
  *                 licenseNumber: "B2-123456789"
  *                 licenseExpiry: "2028-12-31"
  *                 yearsExperience: 3
- *                 services: ["drive_by_hour", "city_service"]
+ *                 services: ["dich_vu_tai_xe_theo_gio", "dich_vu_tai_xe_theo_cay_so"]
   *             update:
   *               summary: Cập nhật hồ sơ nháp hiện có
   *               value:
@@ -236,6 +265,11 @@ const router = express.Router();
   *                   phone: "0912345678"
   *                   email: "user@example.com"
   *                   idNumber: "079123456789"
+ *                 address:
+ *                   province: "Hồ Chí Minh"
+ *                   district: "Quận 1"
+ *                   ward: "Phường Bến Nghé"
+ *                   specificAddress: "123 Đường Nguyễn Huệ"
  *                 # vehicle removed
  *                 documents:
   *                   idFrontUrl: "https://files.example.com/id-front.jpg"
@@ -245,7 +279,7 @@ const router = express.Router();
  *                 licenseNumber: "B2-123456789"
  *                 licenseExpiry: "2028-12-31"
  *                 yearsExperience: 5
- *                 services: ["long_distance", "airport_pickup"]
+ *                 services: ["dich_vu_tai_xe_theo_ngay", "dich_vu_tai_xe_lien_tinh"]
  *     responses:
   *       201:
   *         description: Tạo hồ sơ nháp mới thành công
