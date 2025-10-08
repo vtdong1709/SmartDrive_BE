@@ -3,12 +3,21 @@ import crypto from "crypto";
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
 const pendingRequests = new Map(); // requestId -> { queue, currentIndex, timerId, data, customerSocketId }
+const userSockets = new Map(); // <userId, socketId>
 
 export function setupSocket(io) {
   console.log("Socket.IO initialized");
 
   io.on("connection", (socket) => {
     console.log(`New socket connected: ${socket.id}`);
+
+    // Người dùng đăng ký socket của mình với userId
+    socket.on("registerUserSocket", (userId) => {
+      if (userId) {
+        userSockets.set(userId.toString(), socket.id);
+        console.log(`User ${userId} registered with socket ${socket.id}`);
+      }
+    });
 
     //Khi tài xế online
     socket.on("driverOnline", (data) => {
@@ -129,6 +138,7 @@ export function setupSocket(io) {
 
     // Ngắt kết nối
     socket.on("disconnect", () => {
+      // Xóa khỏi onlineDrivers
       for (const [driverId, info] of onlineDrivers.entries()) {
         if (info.socketId === socket.id) {
           onlineDrivers.delete(driverId);
@@ -136,7 +146,16 @@ export function setupSocket(io) {
           break;
         }
       }
+      // Xóa khỏi userSockets
+      for (const [userId, socketId] of userSockets.entries()) {
+        if (socketId === socket.id) {
+          userSockets.delete(userId);
+          console.log(`User ${userId} socket disconnected`);
+          break;
+        }
+      }
     });
+
   });
 }
 
@@ -189,4 +208,4 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export { onlineDrivers, pendingRequests };
+export { onlineDrivers, pendingRequests, userSockets  };

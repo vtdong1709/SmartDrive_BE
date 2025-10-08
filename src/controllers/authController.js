@@ -9,6 +9,7 @@ import {
   generateAndSendOTPToEmailService,
   verifyOTPFromEmailService,
 } from "../services/otpService.js";
+import { sendWelcomeEmail } from "../services/mailService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 export const register = async (req, res) => {
@@ -151,6 +152,9 @@ export const verifyEmailController = async (req, res) => {
     const user = await verifyOTPFromEmailService(email, code, "verify_email");
     user.verified = true;
     await user.save();
+    
+    // Gửi email chào mừng sau khi xác thực thành công
+    await sendWelcomeEmail({ to: user.email, name: user.fullName });
 
     res
       .status(200)

@@ -17,3 +17,22 @@ export const otpTemplate = ({ name, otp }) => `
     </div>
   </div>
 `;
+
+export const welcomeTemplate = ({ name }) => `
+  <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; padding: 30px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; padding: 40px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+      <h2 style="color: #28a745; text-align: center;">Chào mừng bạn đến với SmartDrive!</h2>
+      <p style="color: #333333; font-size: 16px;">Xin chào <strong>${name}</strong>,</p>
+      <p style="color: #333333; font-size: 16px;">Cảm ơn bạn đã đăng ký và xác thực tài khoản thành công. Giờ đây bạn có thể bắt đầu sử dụng các dịch vụ của chúng tôi.</p>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="#" style="padding: 15px 25px; font-size: 16px; color: #ffffff; background-color: #007bff; border-radius: 8px; text-decoration: none;">
+          Bắt đầu ngay
+        </a>
+      </div>
+      <hr style="border: none; border-top: 1px solid #eeeeee; margin: 30px 0;" />
+      <p style="color: #999999; font-size: 12px; text-align: center;">
+        Nếu bạn có bất kỳ câu hỏi nào, đừng ngần ngại liên hệ với chúng tôi.
+      </p>
+    </div>
+  </div>
+`;

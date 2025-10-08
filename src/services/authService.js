@@ -6,6 +6,7 @@ import {
   verifyRefreshToken,
 } from "../utils/jwtHandler.js";
 import RefreshToken from "../models/RefreshToken.js";
+import { createAndSendNotification } from "./notificationService.js";
 
 export const registerUser = async (userData) => {
   const { fullName, email, phone, password, role } = userData;
@@ -45,10 +46,19 @@ export const registerUser = async (userData) => {
     role: role || "renter",
     verified: false,
     avatar: null,
-    idDocument: null, 
+    idDocument: null,
   });
 
   await newUser.save();
+
+  // Gửi thông báo đăng ký thành công
+  await createAndSendNotification(
+    newUser._id,
+    "Đăng ký thành công",
+    `Chào mừng ${newUser.fullName}! Cảm ơn bạn đã đăng ký tài khoản.`,
+    "auth_success"
+    // Không cần gửi email vì đã có email OTP
+  );
   return newUser;
 };
 

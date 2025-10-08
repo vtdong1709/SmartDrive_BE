@@ -1,4 +1,7 @@
 import { getTransporter } from "../config/mailConfig.js";
+import Notification from "../models/Notification.js";
+import { io } from "../../server.js";
+import { userSockets } from "../sockets/socketHandler.js";
 
 function baseTemplate({ title, body }) {
   return `
@@ -53,5 +56,49 @@ export async function notifyApplicationRejected(to, name, reason) {
   });
 }
 
+/**
+ * Tạo và gửi thông báo (email + real-time)
+ * @param {string} userId - ID của người nhận
+ * @param {string} title - Tiêu đề thông báo
+ * @param {string} message - Nội dung thông báo
+ * @param {string} type - Loại thông báo
+ * @param {object} mailOptions - Tùy chọn để gửi email (nếu có)
+ * @param {string} mailOptions.to - Email người nhận
+ * @param {string} mailOptions.subject - Chủ đề email
+ * @param {string} mailOptions.body - Nội dung email (HTML)
+ */
+export const createAndSendNotification = async (userId, title, message, type, mailOptions) => {
+  try {
+    // 1. Lưu thông báo vào DB
+    const notification = await Notification.create({
+      userId,
+      title,
+      message,
+      type,
+    });
 
+    // 2. Gửi thông báo real-time qua Socket.IO
+    const userSocketId = userSockets.get(userId.toString());
+    if (userSocketId) {
+      io.to(userSocketId).emit("newNotification", notification);
+      console.log(`Sent real-time notification to user ${userId}`);
+    }
 
+    // 3. Gửi email nếu có thông tin
+    if (mailOptions && mailOptions.to) {
+      const transporter = getTransporter();
+      const html = baseTemplate({ title: mailOptions.subject, body: mailOptions.body });
+      await transporter.sendMail({
+        from: `SmartDrive <${process.env.SMTP_USER}>`,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html,
+      });
+      console.log(`Sent email notification to ${mailOptions.to}`);
+    }
+
+    return notification;
+  } catch (error) {
+    console.error("Failed to create and send notification:", error);
+  }
+};

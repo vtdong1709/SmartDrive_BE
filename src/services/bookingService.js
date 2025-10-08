@@ -5,10 +5,12 @@ import Pricing from "../models/Pricing.js";
 import { onlineDrivers, pendingRequests } from "../sockets/socketHandler.js";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
+import { createAndSendNotification } from "./notificationService.js";
+import User from "../models/User.js";
 
 export const createBookingService = async (bookingData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration} = bookingData;
-  const newBookingData  = {
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = bookingData;
+  const newBookingData = {
     customerId,
     driverId,
     startTime,
@@ -23,6 +25,25 @@ export const createBookingService = async (bookingData) => {
   };
   console.log(newBookingData);
   const booking = await Booking.create(newBookingData);
+
+  // Gửi thông báo cho khách hàng
+  await createAndSendNotification(
+    booking.customerId,
+    "Đặt xe thành công",
+    `Bạn đã đặt thành công chuyến đi từ ${booking.pickupLocation} đến ${booking.dropoffLocation}.`,
+    "booking_created"
+  );
+
+  // Gửi thông báo cho tài xế
+  const driver = await User.findById(booking.driverId);
+  if (driver) {
+    await createAndSendNotification(
+      booking.driverId,
+      "Bạn có cuốc xe mới",
+      `Bạn có một cuốc xe mới từ ${booking.pickupLocation} đến ${booking.dropoffLocation}.`,
+      "booking_created"
+    );
+  }
   return booking;
 };
 
@@ -46,7 +67,7 @@ export const updateBookingService = async (id, updateData) => {
   Object.keys(allowedUpdates).forEach(
     (key) => allowedUpdates[key] === undefined && delete allowedUpdates[key]
   );
-  
+
   console.log(allowedUpdates);
   const booking = await Booking.findByIdAndUpdate(id, { $set: allowedUpdates }, {
     new: true,
@@ -55,6 +76,24 @@ export const updateBookingService = async (id, updateData) => {
   });
   if (!booking) {
     throw new errorResponse("Không tìm thấy booking", 404);
+  }
+
+  // Nếu trạng thái là "Cancelled"
+  if (updateData.status === "Cancelled" && booking) {
+    const customer = await User.findById(booking.customerId);
+    const driver = await User.findById(booking.driverId);
+
+    // Thông báo cho người còn lại
+    // Giả sử người hủy là req.user.id (logic này cần được thêm vào controller)
+    // Ví dụ: customer hủy
+    if (driver) {
+      await createAndSendNotification(
+        driver._id,
+        "Chuyến đi đã bị hủy",
+        `Chuyến đi từ ${booking.pickupLocation} đã bị khách hàng hủy.`,
+        "booking_cancelled"
+      );
+    }
   }
   return booking;
 };
@@ -85,9 +124,9 @@ export const getBookingByIdService = async (id) => {
   if (!id) {
     throw new errorResponse("Không tìm thấy booking", 404);
   }
-    const booking = await Booking.findById(id).populate("customerId").populate("driverId");
-    return booking;
-  };
+  const booking = await Booking.findById(id).populate("customerId").populate("driverId");
+  return booking;
+};
 
 export const getBookingsByUserIdService = async (userId) => {
   if (!userId) {

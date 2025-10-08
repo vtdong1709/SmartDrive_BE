@@ -95,6 +95,24 @@ export async function submitApplicationService(userId, applicationId) {
   } catch (e) {
     console.warn("notifyApplicationSubmitted error:", e?.message || e);
   }
+  await app.save();
+  try {
+    // Gửi thông báo
+    await createAndSendNotification(
+      user._id,
+      "Hồ sơ đã được gửi",
+      "Hồ sơ tài xế của bạn đã được gửi và đang chờ xét duyệt.",
+      "driver_pending",
+      {
+        to: user.email,
+        subject: "SmartDrive - Đã nhận hồ sơ tài xế",
+        body: `Xin chào <strong>${user.fullName}</strong>,<br/>Chúng tôi đã nhận được hồ sơ tài xế của bạn và sẽ xem xét trong 1–3 ngày làm việc.`
+      }
+    );
+  } catch (e) {
+    console.warn("submitApplication notification error:", e?.message || e);
+  }
+
   return app;
 }
 
@@ -122,9 +140,9 @@ export async function listApplicationsService({ status, search, page = 1, limit 
     const svc = Array.isArray(services)
       ? services
       : String(services)
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean);
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     if (svc.length) query.services = { $in: svc };
   }
   const skip = (Number(page) - 1) * Number(limit);
@@ -165,6 +183,17 @@ export async function approveApplicationService(id) {
       if (user.role !== "driver") {
         user.role = "driver";
         await user.save();
+        await createAndSendNotification(
+          user._id,
+          "Hồ sơ được duyệt",
+          "Chúc mừng! Hồ sơ tài xế của bạn đã được duyệt.",
+          "driver_approved",
+          {
+            to: user.email,
+            subject: "SmartDrive - Hồ sơ đã được duyệt",
+            body: `Xin chào <strong>${user.fullName}</strong>,<br/>Hồ sơ của bạn đã được duyệt. Vui lòng đăng nhập để bật trạng thái sẵn sàng.`
+          }
+        );
       }
       await notifyApplicationApproved(user.email, user.fullName);
     }
@@ -197,7 +226,17 @@ export async function rejectApplicationService(id, reason) {
   try {
     const user = await User.findById(app.userId);
     if (user) {
-      await notifyApplicationRejected(user.email, user.fullName, reason);
+      await createAndSendNotification(
+        user._id,
+        "Hồ sơ bị từ chối",
+        `Hồ sơ của bạn đã bị từ chối với lý do: ${reason}`,
+        "driver_rejected",
+        {
+          to: user.email,
+          subject: "SmartDrive - Hồ sơ bị từ chối",
+          body: `Xin chào <strong>${user.fullName}</strong>,<br/>Rất tiếc hồ sơ của bạn bị từ chối với lý do: ${reason}. Bạn có thể bổ sung và gửi lại.`
+        }
+      );
     }
   } catch (e) {
     console.warn("notifyApplicationRejected error:", e?.message || e);
