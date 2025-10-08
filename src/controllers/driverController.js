@@ -7,7 +7,7 @@ import {
   setMyAvailabilityService,
   submitApplicationService,
   upsertDraftApplicationService,
-} from "../services/driverService.js";
+} from "../services/driverApplicationService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 // User: create/update draft
@@ -21,7 +21,7 @@ export const upsertDraftApplication = async (req, res) => {
   }
 };
 
-import { deleteMyApplicationService, updateMyApplicationService } from "../services/driverService.js";
+import { deleteMyApplicationService, updateMyApplicationService } from "../services/driverApplicationService.js";
 
 // User: update my application by id
 export const updateMyApplication = async (req, res) => {

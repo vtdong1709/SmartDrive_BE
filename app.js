@@ -3,6 +3,8 @@ import cors from "cors";
 import authRoutes from "./src/routes/authRoutes.js";
 import userRoutes from "./src/routes/userRoutes.js";
 import driverRoutes from "./src/routes/driverRoutes.js";
+import driverApplicationRoutes from "./src/routes/driverApplicationRoutes.js";
+import adminRoutes from "./src/routes/adminRoutes.js";
 
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
@@ -26,8 +28,11 @@ app.use(cors(corsOptions));
 //Init Routers
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api", driverRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/driver", driverApplicationRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/pricing", pricingRoutes);
+
 
 export default app;

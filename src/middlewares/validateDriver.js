@@ -2,9 +2,12 @@ import { errorResponse } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
 
 export function validateDraftApplication(req, res, next) {
-  const { personal, vehicle, applicationId, licenseNumber, licenseExpiry, yearsExperience, services } = req.body || {};
-  if (!personal || !vehicle) {
-    return res.status(400).json(errorResponse("Thiếu thông tin cá nhân hoặc phương tiện", 400));
+  const { personal, address, applicationId, licenseNumber, licenseExpiry, yearsExperience, services } = req.body || {};
+  if (!personal) {
+    return res.status(400).json(errorResponse("Thiếu thông tin cá nhân", 400));
+  }
+  if (!address) {
+    return res.status(400).json(errorResponse("Thiếu thông tin địa chỉ", 400));
   }
   if (applicationId && !mongoose.Types.ObjectId.isValid(applicationId)) {
     return res.status(400).json(errorResponse("applicationId không hợp lệ", 400));
@@ -24,13 +27,21 @@ export function validateDraftApplication(req, res, next) {
     return res.status(400).json(errorResponse("Vui lòng cung cấp số CCCD/CMND", 400));
   }
 
-  const requiredVehicle = ["type", "brand", "model", "year", "plate", "color"];
-  const missingVehicle = requiredVehicle.filter((k) => !vehicle[k]);
-  if (missingVehicle.length) {
-    return res
-      .status(400)
-      .json(errorResponse("Thiếu thông tin phương tiện: " + missingVehicle.join(", "), 400));
+  // Validate address fields
+  if (!address.province || address.province.trim().length === 0) {
+    return res.status(400).json(errorResponse("Vui lòng cung cấp tỉnh/thành phố", 400));
   }
+  if (!address.district || address.district.trim().length === 0) {
+    return res.status(400).json(errorResponse("Vui lòng cung cấp quận/huyện", 400));
+  }
+  if (!address.ward || address.ward.trim().length === 0) {
+    return res.status(400).json(errorResponse("Vui lòng cung cấp phường/xã", 400));
+  }
+  if (!address.specificAddress || address.specificAddress.trim().length === 0) {
+    return res.status(400).json(errorResponse("Vui lòng cung cấp địa chỉ cụ thể", 400));
+  }
+
+  // vehicle info no longer required
 
   // Require license & experience at draft time
   if (!licenseNumber) {
