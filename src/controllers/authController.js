@@ -27,6 +27,7 @@ export const register = async (req, res) => {
           fullName: newUser.fullName,
           email: newUser.email,
           role: newUser.role,
+          phone: newUser.phone,
         }
       )
     );

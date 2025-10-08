@@ -27,6 +27,18 @@ export const registerUser = async (userData) => {
       statusCode: 400,
     });
 
+  if (!phone)
+    throw Object.assign(new Error("Vui lòng cung cấp số điện thoại"), {
+      statusCode: 400,
+    });
+
+  const phoneRegex = /^(?:\+84|0)(?:3[2-9]|5[2689]|7[06789]|8[1-9]|9\d)\d{7}$/;
+  if (!phoneRegex.test(phone)) {
+    throw Object.assign(new Error("Số điện thoại không hợp lệ"), {
+      statusCode: 400,
+    });
+  }
+
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     const error = new Error("Email đã tồn tại");
@@ -40,12 +52,12 @@ export const registerUser = async (userData) => {
   const newUser = new User({
     fullName,
     email,
-    phone: phone || null,
+    phone: phone,
     password: hashedPassword,
     role: role || "renter",
     verified: false,
     avatar: null,
-    idDocument: null, 
+    idDocument: null,
   });
 
   await newUser.save();

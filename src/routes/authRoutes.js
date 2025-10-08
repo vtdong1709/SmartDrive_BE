@@ -36,6 +36,7 @@ const router = express.Router();
  *             required:
  *               - fullName
  *               - email
+ *               - phone
  *               - password
  *             properties:
  *               fullName:
@@ -47,6 +48,10 @@ const router = express.Router();
  *                 format: email
  *                 description: Email hợp lệ của người dùng
  *                 example: "nguyenvana@example.com"
+ *               phone:
+ *                 type: string
+ *                 description: Số điện thoại hợp lệ tại Việt Nam (10 chữ số, bắt đầu bằng 0 hoặc +84)
+ *                 example: "0987654321"
  *               password:
  *                 type: string
  *                 minLength: 6
@@ -83,11 +88,14 @@ const router = express.Router();
  *                     email:
  *                       type: string
  *                       example: "nguyenvana@example.com"
+ *                     phone:
+ *                       type: string
+ *                       example: "0987654321"
  *                     role:
  *                       type: string
  *                       example: "renter"
  *       400:
- *         description: Lỗi validate hoặc email đã tồn tại
+ *         description: Lỗi validate hoặc email/phone đã tồn tại
  *         content:
  *           application/json:
  *             schema:
@@ -98,7 +106,7 @@ const router = express.Router();
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Email đã tồn tại"
+ *                   example: "Số điện thoại không hợp lệ"
  *                 code:
  *                   type: integer
  *                   example: 400
