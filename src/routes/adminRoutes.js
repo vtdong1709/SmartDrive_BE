@@ -19,6 +19,28 @@ const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     PaginatedApplications:
+ *       type: object
+ *       properties:
+ *         items:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/DriverApplication'
+ *         total:
+ *           type: integer
+ *           example: 1
+ *         page:
+ *           type: integer
+ *           example: 1
+ *         limit:
+ *           type: integer
+ *           example: 10
+ */
+
+/**
+ * @swagger
  * /api/admin/driver-applications:
  *   get:
  *     summary: (Admin/Staff) Danh sách hồ sơ tài xế
@@ -59,7 +81,7 @@ const router = express.Router();
  *         name: services
  *         schema:
  *           type: string
- *         description: CSV of services (e.g. drive_by_hour,city_service)
+ *         description: CSV of services (e.g. dich_vu_tai_xe_theo_gio,dich_vu_tai_xe_theo_cay_so)
  *       - in: query
  *         name: page
  *         schema:
