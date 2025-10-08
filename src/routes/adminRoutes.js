@@ -108,6 +108,13 @@ router.get("/driver-applications", authenticate, authorizeRoles("admin", "staff"
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã hồ sơ
  *     responses:
  *       200:
  *         description: Thành công
@@ -124,6 +131,13 @@ router.get("/driver-applications/:id", authenticate, authorizeRoles("admin", "st
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã hồ sơ
  *     responses:
  *       200:
  *         description: Duyệt thành công
@@ -138,6 +152,13 @@ router.post("/driver-applications/:id/approve", authenticate, authorizeRoles("ad
  *     tags: [Admin]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Mã hồ sơ
  *     requestBody:
  *       required: true
  *       content:
