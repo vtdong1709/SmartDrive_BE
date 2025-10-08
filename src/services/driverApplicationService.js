@@ -35,6 +35,7 @@ export async function upsertDraftApplicationService(userId, payload) {
       throw Object.assign(new Error("Chỉ cập nhật khi hồ sơ ở trạng thái nháp/bị từ chối"), { statusCode: 400 });
     }
     app.personal = payload.personal ?? app.personal;
+    app.address = payload.address ?? app.address;
     if (payload.documents) {
       app.documents = { ...app.documents, ...payload.documents };
     }
@@ -50,6 +51,7 @@ export async function upsertDraftApplicationService(userId, payload) {
     userId,
     status: "draft",
     personal: payload.personal,
+    address: payload.address,
     documents: payload.documents || {},
     licenseNumber: payload.licenseNumber,
     licenseExpiry: payload.licenseExpiry,
@@ -226,6 +228,7 @@ export async function updateMyApplicationService(userId, id, payload) {
     throw Object.assign(new Error("Chỉ cập nhật khi hồ sơ ở trạng thái nháp"), { statusCode: 400 });
   }
   app.personal = payload.personal ?? app.personal;
+  app.address = payload.address ?? app.address;
   if (payload.documents) app.documents = { ...app.documents, ...payload.documents };
   if (typeof payload.licenseNumber !== "undefined") app.licenseNumber = payload.licenseNumber;
   if (typeof payload.licenseExpiry !== "undefined") app.licenseExpiry = payload.licenseExpiry;
@@ -247,6 +250,7 @@ export async function deleteMyApplicationService(userId, id) {
   await DriverApplication.deleteOne({ _id: id, userId });
   return { deleted: true };
 }
+
 
 
 
