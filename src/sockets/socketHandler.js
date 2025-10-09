@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import { updateDriverLocation } from "../services/driverApplicationService.js";
+import redis from "../redis.js";
 
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
@@ -11,30 +13,79 @@ export function setupSocket(io) {
     console.log(`New socket connected: ${socket.id}`);
 
     //Khi tài xế online
-    socket.on("driverOnline", (data) => {
+    socket.on("driverOnline", async (data) => {
       const { driverId, lat, lng } = data;
+
       onlineDrivers.set(driverId, {
         socketId: socket.id,
         location: { lat, lng },
         lastSeen: Date.now(),
       });
-      console.log(`Driver ${driverId} online at (${lat}, ${lng})`);
+
+      // Lưu vào Redis (để API cũng thấy)
+    await redis.set(
+      `driver:${driverId}`,
+      JSON.stringify({
+        location: { lat, lng },
+        availability: "online",
+        lastSeen: Date.now(),
+      })
+    );
+    console.log(`Driver ${driverId} is now online`);
     });
 
     //Tài xế cập nhật vị trí
-    socket.on("driverLocationUpdate", ({ driverId, lat, lng }) => {
-      if (onlineDrivers.has(driverId)) {
-        const info = onlineDrivers.get(driverId);
-        info.location = { lat, lng };
-        info.lastSeen = Date.now();
+    socket.on("driverLocationUpdate", async ({ driverId, lat, lng }) => {
+      if (!driverId) return;
+      await updateDriverLocation(driverId, lat, lng);
+      // Cập nhật vào Redis
+      const existing = await redis.get(`driver:${driverId}`);
+      if (existing) {
+        const info = JSON.parse(existing);
+        info.lat = lat;
+        info.lng = lng;
+        info.timestamp = Date.now();
+        await redis.set(`driver:${driverId}`, JSON.stringify(info));
       }
+
+      // Cập nhật trong map (để tính distance real-time)
+      if (onlineDrivers.has(driverId)) {
+        onlineDrivers.get(driverId).location = { lat, lng };
+      }
+    });
+
+    // Khi tài xế tắt online
+    socket.on("driverOffline", async ({ driverId }) => {
+      console.log(`Driver ${driverId} went offline`);
+      await setMyAvailabilityService(driverId, false);
+      onlineDrivers.delete(driverId);
+      await redis.del(`driver:${driverId}`);
     });
 
     // Khi khách hàng nhấn "Tìm tài xế"
     socket.on("findDriver", async (data) => {
+      console.log("Received findDriver event from FE:", data);
+
+      if (onlineDrivers.size === 0) {
+        const keys = await redis.keys("driver:*");
+        for (const key of keys) {
+          const driverId = key.split(":")[1];
+          const info = await redis.get(key);
+          if (info) {
+            const parsed = JSON.parse(info);
+            onlineDrivers.set(driverId, {
+              socketId: null, // chưa có socket cụ thể
+              location: parsed.location || { lat: 0, lng: 0 },
+              lastSeen: parsed.lastSeen,
+            });
+          }
+        }
+        console.log(`Reloaded ${onlineDrivers.size} drivers from Redis`);
+      }
+    
       const { customerId, pickupLocation, dropoffLocation, finalFare } = data;
       const customerSocketId = socket.id;
-
+      console.log(`Checking ${onlineDrivers.size} online drivers...`);
       //Lọc danh sách tài xế gần điểm đón
       const nearbyDrivers = [];
       for (const [driverId, info] of onlineDrivers.entries()) {
@@ -44,13 +95,15 @@ export function setupSocket(io) {
           info.location.lat,
           info.location.lng
         );
-        if (distance <= 3) {
+        if (distance <= 20) {
           // Bán kính 3km
+          console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
           nearbyDrivers.push({ driverId, socketId: info.socketId });
         }
       }
 
       if (nearbyDrivers.length === 0) {
+        console.log("No nearby drivers found for", customerId);
         io.to(customerSocketId).emit("noDriverAvailable", {
           message: "Không có tài xế nào gần bạn vào lúc này.",
         });
@@ -59,7 +112,7 @@ export function setupSocket(io) {
 
       //Tạo mã yêu cầu duy nhất
       const requestId = crypto.randomUUID();
-
+      console.log(`Created booking request ID: ${requestId}`);
       // Lưu vào pendingRequests
       pendingRequests.set(requestId, {
         queue: nearbyDrivers,
@@ -128,10 +181,11 @@ export function setupSocket(io) {
     });
 
     // Ngắt kết nối
-    socket.on("disconnect", () => {
+    socket.on("disconnect", async() => {
       for (const [driverId, info] of onlineDrivers.entries()) {
         if (info.socketId === socket.id) {
           onlineDrivers.delete(driverId);
+          await redis.del(`driver:${driverId}`);
           console.log(`Driver ${driverId} disconnected`);
           break;
         }
