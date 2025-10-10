@@ -145,7 +145,7 @@ router.get("/", authenticate, authorizeRoles("admin"), getAllUsers);
  *       '404':
  *         description: Không tìm thấy người dùng
  */
-router.get("/:id", authenticate, authorizeRoles("admin"), getUserDetails);
+router.get("/:id", authenticate, authorizeRoles("admin", "driver","renter"), getUserDetails);
 
 /**
  * @swagger
@@ -207,7 +207,7 @@ router.put("/:id", authenticate, authorizeRoles("admin"), updateUserByAdmin);
  *       '404':
  *         description: Không tìm thấy người dùng
  */
-router.get("/:id", authenticate, authorizeRoles("admin"), getUserDetails);
+router.get("/:id", authenticate, authorizeRoles("admin", "driver"), getUserDetails);
 router.put("/:id", authenticate, authorizeRoles("admin"), updateUserByAdmin);
 router.delete("/:id", authenticate, authorizeRoles("admin"), deleteUser);
 

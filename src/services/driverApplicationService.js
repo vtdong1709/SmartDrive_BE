@@ -146,6 +146,14 @@ export async function getApplicationByIdService(id) {
   return app;
 }
 
+export async function getApplicationByDriverIdService(driverId) {
+  const app = await DriverApplication.findOne({ userId: driverId });
+  if (!app) {
+    throw Object.assign(new Error("Không tìm thấy hồ sơ"), { statusCode: 404 });
+  }
+  return app;
+}
+
 export async function approveApplicationService(id) {
   const app = await DriverApplication.findById(id);
   if (!app) {

@@ -69,7 +69,7 @@ router.post("/", authenticate, createBooking);
 
 /**
  * @swagger
- * /api/bookings/{id}:
+ * /api/bookings/get/{id}:
  *   get:
  *     summary: Lấy 1 booking theo ID
  *     tags: [Bookings]
@@ -81,7 +81,6 @@ router.post("/", authenticate, createBooking);
  *         required: true
  *         schema:
  *           type: string
- *         description: Booking ID
  *     responses:
  *       '200':
  *         description: Booking fetched successfully
@@ -94,11 +93,11 @@ router.post("/", authenticate, createBooking);
  *       403:
  *         description: Forbidden
  */
-router.get("/:id", authenticate,authorizeRoles("admin"), getBookingById);
+router.get("/get/:id", authenticate,authorizeRoles("admin","driver","renter"), getBookingById);
 
 /**
  * @swagger
- * /api/bookings/{id}:
+ * /api/bookings/update/{id}:
  *   put:
  *     summary: Cập nhật booking
  *     tags: [Bookings]
@@ -144,11 +143,11 @@ router.get("/:id", authenticate,authorizeRoles("admin"), getBookingById);
  *       403:
  *         description: Forbidden
  */
-router.put("/:id", authenticate,updateBooking);
+router.put("/update/:id", authenticate,updateBooking);
 
 /**
  * @swagger
- * /api/bookings/{id}:
+ * /api/bookings/delete/{id}:
  *   delete:
  *     summary: Xóa 1 booking
  *     tags: [Bookings]
@@ -173,11 +172,11 @@ router.put("/:id", authenticate,updateBooking);
  *       403:
  *         description: Forbidden
  */
-router.delete("/:id", authenticate, authorizeRoles("driver", "admin"),deleteBooking);
+router.delete("/delete/:id", authenticate, authorizeRoles("driver", "admin"),deleteBooking);
 
 /**
  * @swagger
- * /api/bookings:
+ * /api/bookings/get-all:
  *   get:
  *     summary: Lấy tất cả bookings
  *     tags: [Bookings]
@@ -218,7 +217,7 @@ router.delete("/:id", authenticate, authorizeRoles("driver", "admin"),deleteBook
  *       403:
  *         description: Forbidden
  */
-router.get("/", authenticate, authorizeRoles("admin"),getAllBookings);
+router.get("/get-all", authenticate, authorizeRoles("admin"),getAllBookings);
 
 /**
  * @swagger

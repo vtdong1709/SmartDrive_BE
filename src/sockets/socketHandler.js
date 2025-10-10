@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { updateDriverLocation } from "../services/driverApplicationService.js";
+import { setMyAvailabilityService, updateDriverLocation } from "../services/driverApplicationService.js";
 import redis from "../redis.js";
 
 // Lưu trữ tạm thời (in-memory)
