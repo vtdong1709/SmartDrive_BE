@@ -1,6 +1,7 @@
 import {
   approveApplicationService,
   getAllOnlineDrivers,
+  getApplicationByDriverIdService,
   getApplicationByIdService,
   getMyApplicationService,
   getOnlineDriverCount,
@@ -86,6 +87,15 @@ export const getApplicationById = async (req, res) => {
   }
 };
 
+export const getApplicationByDriverId = async (req, res) => {
+  try {
+    const app = await getApplicationByDriverIdService(req.params.id);
+    res.status(200).json(successResponse("Lấy hồ sơ thành công", app));
+  } catch (error) {
+    res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
+  }
+};
+
 // Admin: approve
 export const approveApplication = async (req, res) => {
   try {
@@ -137,6 +147,7 @@ export async function countOnlineDrivers(req, res) {
     res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
   }
 }
+
 
 export async function listOnlineDrivers(req, res) {
   try {
