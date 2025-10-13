@@ -32,7 +32,12 @@ setupSocket(io);
 // Lưu lại server và io để có thể import ở nơi khác
 export { io, server };
 
-app.listen(PORT, () => {
+// app.listen(PORT, () => {
+//   console.log(`Server is running on PORT ${PORT}`);
+//   console.log(`API docs available at http://localhost:${PORT}/api-docs`);
+// });
+server.listen(PORT, () => {
   console.log(`Server is running on PORT ${PORT}`);
   console.log(`API docs available at http://localhost:${PORT}/api-docs`);
+  console.log(`Socket.IO is ready on ws://localhost:${PORT}`);
 });

@@ -7,6 +7,8 @@ import {
   upsertDraftApplication,
   updateMyApplication,
   deleteMyApplication,
+  getApplicationById,
+  getApplicationByDriverId,
 } from "../controllers/driverController.js";
 import {
   validateDraftApplication,
@@ -259,6 +261,35 @@ const router = express.Router();
  *         description: Lỗi validate
  */
 router.post("/applications", authenticate, validateDraftApplication, upsertDraftApplication);
+
+/**
+ * @swagger
+ * /api/driver/applications/{id}:
+ *   get:
+ *     summary: Lấy hồ sơ theo id của tài xế
+ *     tags: [Driver Application]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lấy hồ sơ thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/DriverApplication'
+ */
+router.get("/applications/:id", authenticate, validateApplicationId, getApplicationByDriverId);
 
 /**
  * @swagger

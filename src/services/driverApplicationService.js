@@ -1,3 +1,4 @@
+import redis from "../redis.js";
 import DriverApplication from "../models/DriverApplication.js";
 import DriverProfile from "../models/DriverProfile.js";
 import User from "../models/User.js";
@@ -35,6 +36,7 @@ export async function upsertDraftApplicationService(userId, payload) {
       throw Object.assign(new Error("Chỉ cập nhật khi hồ sơ ở trạng thái nháp/bị từ chối"), { statusCode: 400 });
     }
     app.personal = payload.personal ?? app.personal;
+    app.address = payload.address ?? app.address;
     if (payload.documents) {
       app.documents = { ...app.documents, ...payload.documents };
     }
@@ -50,6 +52,7 @@ export async function upsertDraftApplicationService(userId, payload) {
     userId,
     status: "draft",
     personal: payload.personal,
+    address: payload.address,
     documents: payload.documents || {},
     licenseNumber: payload.licenseNumber,
     licenseExpiry: payload.licenseExpiry,
@@ -161,6 +164,14 @@ export async function getApplicationByIdService(id) {
   return app;
 }
 
+export async function getApplicationByDriverIdService(driverId) {
+  const app = await DriverApplication.findOne({ userId: driverId });
+  if (!app) {
+    throw Object.assign(new Error("Không tìm thấy hồ sơ"), { statusCode: 404 });
+  }
+  return app;
+}
+
 export async function approveApplicationService(id) {
   const app = await DriverApplication.findById(id);
   if (!app) {
@@ -247,14 +258,61 @@ export async function rejectApplicationService(id, reason) {
 export async function setMyAvailabilityService(userId, online) {
   await ensureActiveUser(userId);
   const profile = await DriverProfile.findOne({ userId });
+  console.log("profile", profile)
   if (!profile || !profile.approved) {
     throw Object.assign(new Error("Tài khoản chưa được duyệt làm tài xế"), { statusCode: 403 });
   }
   profile.availability = online ? "online" : "offline";
   await profile.save();
+   // Nếu tắt, xóa khỏi Redis luôn
+   if (online) {
+    await redis.set(
+      `driver:${userId}`,
+      JSON.stringify({
+        availability: "online",
+        lastSeen: Date.now(),
+      })
+    );
+  } else {
+    await redis.del(`driver:${userId}`);
+  }
   return profile;
 }
 
+//Cập nhật vị trí realtime của tài xế (gọi từ socket)
+export async function updateDriverLocation(driverId, lat, lng) {
+  const payload = JSON.stringify({
+    lat,
+    lng,
+    lastSeen: Date.now(),
+  });
+
+  // TTL = 30 giây → nếu không cập nhật lại => tự mất
+  await redis.set(`driver:${driverId}`, payload, "EX", 30);
+}
+
+//Lấy số lượng tài xế online hiện tại
+export async function getOnlineDriverCount() {
+  const keys = await redis.keys("driver:*");
+  return keys.length;
+}
+
+export async function getAllOnlineDrivers() {
+  const keys = await redis.keys("driver:*");
+  const drivers = [];
+
+  for (const key of keys) {
+    const data = await redis.get(key);
+    if (data) {
+      const driverId = key.split(":")[1];
+      drivers.push({ driverId, ...JSON.parse(data) });
+    }
+  }
+
+  return drivers;
+}
+
+//Lấy danh sách tài xế online và vị trí (để tìm tài xế gần khách)
 export async function updateMyApplicationService(userId, id, payload) {
   await ensureActiveUser(userId);
   const app = await DriverApplication.findOne({ _id: id, userId });
@@ -265,6 +323,7 @@ export async function updateMyApplicationService(userId, id, payload) {
     throw Object.assign(new Error("Chỉ cập nhật khi hồ sơ ở trạng thái nháp"), { statusCode: 400 });
   }
   app.personal = payload.personal ?? app.personal;
+  app.address = payload.address ?? app.address;
   if (payload.documents) app.documents = { ...app.documents, ...payload.documents };
   if (typeof payload.licenseNumber !== "undefined") app.licenseNumber = payload.licenseNumber;
   if (typeof payload.licenseExpiry !== "undefined") app.licenseExpiry = payload.licenseExpiry;
@@ -286,6 +345,7 @@ export async function deleteMyApplicationService(userId, id) {
   await DriverApplication.deleteOne({ _id: id, userId });
   return { deleted: true };
 }
+
 
 
 

@@ -120,13 +120,15 @@ export const getAllBookingsService = async () => {
   return bookings;
 };
 
-export const getBookingByIdService = async (id) => {
-  if (!id) {
-    throw new errorResponse("Không tìm thấy booking", 404);
-  }
-  const booking = await Booking.findById(id).populate("customerId").populate("driverId");
-  return booking;
-};
+  export const getBookingByIdService = async (id) => {
+    if (!id) {
+      throw new errorResponse("Không tìm thấy booking", 404);
+    }
+      const booking = await Booking.findById(id)
+      .populate({ path: "customerId", model: "users" })
+      .populate({ path: "driverId", model: "users" });
+      return booking;
+    };
 
 export const getBookingsByUserIdService = async (userId) => {
   if (!userId) {
