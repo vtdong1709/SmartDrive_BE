@@ -1,4 +1,4 @@
-import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, updateBookingService } from "../services/bookingService.js";
+import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 export const createBooking = async (req, res) => {
@@ -31,7 +31,7 @@ export const getBookingById = async (req, res) => {
   try {
     const { id } = req.params;
     const booking = await getBookingByIdService(id);
-  res.status(201).json(successResponse("Booking fetched successfully", booking));
+  res.status(200).json(successResponse("Booking fetched successfully", booking));
 } catch (error) {
   res
   .status(error.code || 500)
@@ -113,11 +113,12 @@ export const getBookingsByStatus = async (req, res) => {
 
 export const calculateFare = async (req, res) => {
     try {
-      const { pickupLocation, dropoffLocation, startTime, serviceType } = req.body;
+      const { pickupLocation, dropoffLocation, startTime, endTime, serviceType } = req.body;
       const result = await calculateFareService(
         pickupLocation,
         dropoffLocation,
         startTime,
+        endTime,
         serviceType
       );
   
@@ -127,15 +128,15 @@ export const calculateFare = async (req, res) => {
     }
   };
 
-// export const calculateFare = async (req, res) => {
-//     try {
-//         const { pickupLocation, dropoffLocation, startTime } = req.body;
-//         const fare = await calculateFareService(pickupLocation, dropoffLocation, startTime);
-//         res.status(200).json(successResponse("Ước tính giá tiền thành công", fare));
-//     } catch (error) {
-//         res
-//         .status(error.code || 500)
-//         .json(errorResponse(error.message, error.code));
-//     }
-// }
-
+export const updateBookingStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const booking = await updateBookingStatusService(id, status);
+        res.status(200).json(successResponse("Booking status updated successfully", booking));
+    } catch (error) {
+        res
+        .status(error.code || 500)
+        .json(errorResponse(error.message, error.code));
+    }
+};
