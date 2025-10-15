@@ -6,7 +6,8 @@ import { calculateFare, createBooking,
       getBookingsByDriverId, 
       getBookingsByStatus, 
       getBookingsByUserId, 
-      updateBooking 
+      updateBooking, 
+      updateBookingStatus
     } from "../controllers/bookingController.js";
 import { authenticate, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -324,65 +325,17 @@ router.get("/driver/:driverId", authenticate, authorizeRoles("driver"),getBookin
  */
 router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsByStatus);
 
-// /**
-//  * @swagger
-//  * /api/bookings/calculateFare:
-//  *   post:
-//  *     summary: Tính toán giá cước trước khi booking.
-//  *     tags: [Bookings]
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             properties:
-//  *               pickupLocation:
-//  *                 type: string
-//  *               dropoffLocation:
-//  *                 type: string
-//  *               startTime:
-//  *                 type: string
-//  *                 format: date-time
-//  *               serviceType:
-//  *                 type: string
-//  *                 enum: [hourly, daily, airport_transfer]
-//  *                 description: Loại dịch vụ áp dụng bảng giá
-//  *     responses:
-//  *       200:
-//  *         description: Fare calculated successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 success:
-//  *                   type: boolean
-//  *                   example: true
-//  *                 message:
-//  *                   type: string
-//  *                   example: "Fare calculated successfully"
-//  *                 data:
-//  *                   $ref: '#/components/schemas/Fare'
-//  *       400:
-//  *         description: Bad request
-//  *       500:
-//  *         description: Internal server error
-//  *       401:
-//  *         description: Unauthorized
-//  *       403:
-//  *         description: Forbidden
-//  */
-// router.post("/calculateFare", calculateFare);
 
 /**
  * @swagger
  * /api/bookings/calculateFare:
  *   post:
- *     summary: Tính toán giá cước trước khi người dùng xác nhận đặt.
- *     description: 
- *       API này sẽ tính toán tổng giá dựa trên quãng đường, thời gian, loại dịch vụ, giờ trong ngày, và phụ phí (cuối tuần, ngày lễ, khung giờ đặc biệt).  
- *       **Không bao gồm phí chờ.**
+ *     summary: Tính toán giá cước trước khi người dùng xác nhận đặt
+ *     description: |
+ *       API tính tổng giá cước dựa trên:
+ *       - Quãng đường (nếu tính theo km)
+ *       - Thời gian (nếu thuê theo giờ hoặc ngày)
+ *       - Phụ phí theo khung giờ, cuối tuần, ngày lễ  
  *     tags: [Bookings]
  *     requestBody:
  *       required: true
@@ -394,6 +347,7 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *               - pickupLocation
  *               - dropoffLocation
  *               - startTime
+ *               - endTime
  *               - serviceType
  *             properties:
  *               pickupLocation:
@@ -404,16 +358,51 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *                 type: string
  *                 example: "Quận 7, TP.HCM"
  *                 description: Điểm trả khách
- *               startTime:
- *                 type: string
- *                 format: date-time
- *                 example: "2025-10-06T21:30:00Z"
- *                 description: Thời gian bắt đầu chuyến đi (ISO 8601 format)
  *               serviceType:
  *                 type: string
  *                 enum: [per_km, hourly, daily, intercity]
- *                 example: "hourly"
  *                 description: Loại dịch vụ (tính theo km, giờ, ngày hoặc đi tỉnh)
+ *               startTime:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-10-06T08:00:00Z"
+ *                 description: Thời gian bắt đầu chuyến đi (ISO 8601 format)
+ *               endTime:
+ *                 type: string
+ *                 format: date-time
+ *                 example: "2025-10-06T16:00:00Z"
+ *                 description: Thời gian kết thúc chuyến đi (bắt buộc khi thuê theo giờ hoặc ngày)
+ *           examples:
+ *             per_km:
+ *               summary: Dịch vụ tính theo km
+ *               value:
+ *                 pickupLocation: "Quận 1, TP.HCM"
+ *                 dropoffLocation: "Quận 7, TP.HCM"
+ *                 startTime: "2025-10-06T21:30:00Z"
+ *                 serviceType: "per_km"
+ *             hourly:
+ *               summary: Dịch vụ thuê theo giờ (4 hoặc 8 tiếng)
+ *               value:
+ *                 pickupLocation: "Quận 1, TP.HCM"
+ *                 dropoffLocation: "Quận Bình Thạnh, TP.HCM"
+ *                 startTime: "2025-10-06T08:00:00Z"
+ *                 endTime: "2025-10-06T12:00:00Z"
+ *                 serviceType: "hourly"
+ *             daily:
+ *               summary: Dịch vụ thuê theo ngày (1–3 ngày)
+ *               value:
+ *                 pickupLocation: "TP.HCM"
+ *                 dropoffLocation: "TP.HCM"
+ *                 startTime: "2025-10-06T08:00:00Z"
+ *                 endTime: "2025-10-08T08:00:00Z"
+ *                 serviceType: "daily"
+ *             intercity:
+ *               summary: Dịch vụ liên tỉnh (70km đầu giá A, 30km sau giá B, >100km giá C)
+ *               value:
+ *                 pickupLocation: "TP.HCM"
+ *                 dropoffLocation: "Vũng Tàu"
+ *                 startTime: "2025-10-06T08:00:00Z"
+ *                 serviceType: "intercity"
  *     responses:
  *       200:
  *         description: Tính toán giá cước thành công
@@ -434,11 +423,15 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *                     baseFare:
  *                       type: number
  *                       example: 13000
- *                       description: Đơn giá gốc theo km hoặc giờ
+ *                       description: Đơn giá gốc theo km, giờ hoặc ngày
  *                     distance:
  *                       type: number
  *                       example: 12.5
- *                       description: Quãng đường tính bằng km
+ *                       description: Quãng đường tính bằng km (chỉ áp dụng cho per_km, intercity)
+ *                     duration:
+ *                       type: string
+ *                       example: "8 tiếng"
+ *                       description: Thời lượng thuê (áp dụng cho hourly hoặc daily)
  *                     totalFare:
  *                       type: number
  *                       example: 156000
@@ -453,9 +446,11 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *                         weekendSurcharge:
  *                           type: number
  *                           example: 10
+ *                           description: Phụ phí cuối tuần (%)
  *                         holidaySurcharge:
  *                           type: number
  *                           example: 18
+ *                           description: Phụ phí ngày lễ (%)
  *                         openingFee:
  *                           type: number
  *                           example: 50000
@@ -470,6 +465,47 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *         description: Lỗi máy chủ nội bộ
  */
 router.post("/calculateFare", calculateFare);
+
+
+/**
+ * @swagger
+ * /api/bookings/updateStatus/{id}:
+ *   patch:
+ *     summary: Cập nhật trạng thái booking
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [Pending, Confirmed, Ongoing, Completed, Cancelled]
+ *     responses:
+ *       200:
+ *         description: Booking status updated successfully
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Internal server error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.patch("/updateStatus/:id", authenticate, updateBookingStatus);
+
 
 
 export default router; 

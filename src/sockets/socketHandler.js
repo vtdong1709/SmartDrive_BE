@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { setMyAvailabilityService, updateDriverLocation } from "../services/driverApplicationService.js";
+import { getUserById } from "../services/userService.js";
 import redis from "../redis.js";
 
 // Lưu trữ tạm thời (in-memory)
@@ -62,6 +63,35 @@ export function setupSocket(io) {
       await redis.del(`driver:${driverId}`);
     });
 
+    // Listen for booking acceptance confirmation
+socket.on("bookingYouAccepted", async (payload) => {
+  // Navigate with correct bookingId from renter
+  router.push({
+    pathname: "/(booking)/move-driver",
+    params: {
+      bookingId: payload.bookingId || "",
+      // ... other params
+    },
+  });
+});
+
+// Khi renter tạo booking xong và gửi bookingId
+socket.on("bookingCreated", ({ requestId, bookingId }) => {
+  const reqObj = pendingRequests.get(requestId);
+  if (!reqObj || !reqObj.waitingForBookingId) return;
+
+  const current = reqObj.queue[reqObj.currentIndex];
+  if (!current) return;
+
+  // Send bookingId to driver
+  io.to(current.socketId).emit("bookingYouAccepted", { 
+    success: true, 
+    bookingId: bookingId 
+  });
+  
+  pendingRequests.delete(requestId);
+});
+
     // Khi khách hàng nhấn "Tìm tài xế"
     socket.on("findDriver", async (data) => {
       console.log("Received findDriver event from FE:", data);
@@ -85,6 +115,19 @@ export function setupSocket(io) {
     
       const { customerId, pickupLocation, dropoffLocation, finalFare } = data;
       const customerSocketId = socket.id;
+      
+      // Lấy thông tin khách hàng
+      let customerInfo = null;
+      try {
+        console.log("customerInfo", customerInfo)
+        customerInfo = await getUserById(customerId);
+        console.log(`Customer info loaded: ${customerInfo.fullName}`);
+      } catch (error) {
+        console.error(`Error loading customer info for ${customerId}:`, error.message);
+        // Vẫn tiếp tục với thông tin cơ bản
+        customerInfo = { _id: customerId, fullName: "Khách hàng", phone: "" };
+      }
+      
       console.log(`Checking ${onlineDrivers.size} online drivers...`);
       //Lọc danh sách tài xế gần điểm đón
       const nearbyDrivers = [];
@@ -119,6 +162,7 @@ export function setupSocket(io) {
         currentIndex: 0,
         data,
         customerSocketId,
+        customerInfo, // Thêm thông tin khách hàng
       });
 
       // Gửi yêu cầu đến tài xế đầu tiên
@@ -128,6 +172,13 @@ export function setupSocket(io) {
         pickupLocation,
         dropoffLocation,
         estimatedFare: finalFare,
+        customerId: customerId,
+        customerInfo: {
+          id: customerInfo._id,
+          fullName: customerInfo.fullName,
+          phone: customerInfo.phone,
+          avatar: customerInfo.avatar,
+        },
       });
 
       // Set timeout (15s) nếu tài xế không phản hồi
@@ -159,12 +210,18 @@ export function setupSocket(io) {
         pickupLocation: reqObj.data.pickupLocation,
         dropoffLocation: reqObj.data.dropoffLocation,
         price: reqObj.data.finalFare,
+        requestId: requestId,
       });
 
-      io.to(current.socketId).emit("bookingYouAccepted", { success: true });
-      pendingRequests.delete(requestId);
+      reqObj.waitingForBookingId = true;
+  pendingRequests.set(requestId, reqObj);
+  console.log(`Driver ${driverId} accepted booking ${requestId}, waiting for bookingId from renter`);
+    
 
-      console.log(`Driver ${driverId} accepted booking ${requestId}`);
+      // io.to(current.socketId).emit("bookingYouAccepted", { success: true });
+      // pendingRequests.delete(requestId);
+
+      // console.log(`Driver ${driverId} accepted booking ${requestId}`);
     });
 
     // Khi tài xế từ chối
@@ -216,6 +273,13 @@ function nextDriver(io, requestId) {
     pickupLocation: reqObj.data.pickupLocation,
     dropoffLocation: reqObj.data.dropoffLocation,
     estimatedFare: reqObj.data.finalFare,
+    customerId: reqObj.data.customerId,
+    customerInfo: reqObj.customerInfo ? {
+      id: reqObj.customerInfo._id,
+      fullName: reqObj.customerInfo.fullName,
+      phone: reqObj.customerInfo.phone,
+      avatar: reqObj.customerInfo.avatar,
+    } : null,
   });
 
   const timerId = setTimeout(() => {
