@@ -1,31 +1,147 @@
 import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
+// export const createBooking = async (req, res) => {
+//     try {
+//         const { driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = req.body;
+//         const customerId = req.user.id;
+//         const bookingData = {
+//             customerId,
+//             driverId,
+//             startTime,
+//             endTime,
+//             pickupLocation,
+//             dropoffLocation,
+//             distance,
+//             duration,
+//             price,
+//             createdAt: new Date(),
+//         };
+//         console.log(bookingData);
+//         const booking = await createBookingService(bookingData);
+//         res.status(200).json(successResponse("Đặt tài xế thành công", booking));
+//     } catch (error) {
+//         res
+//         .status(error.code || 500)
+//         .json(errorResponse(error.message, error.code));
+//     }
+// };
+
 export const createBooking = async (req, res) => {
     try {
-        const { driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = req.body;
-        const customerId = req.user.id;
-        const bookingData = {
-            customerId,
-            driverId,
-            startTime,
-            endTime,
-            pickupLocation,
-            dropoffLocation,
-            distance,
-            duration,
-            price,
-            createdAt: new Date(),
-        };
-        console.log(bookingData);
-        const booking = await createBookingService(bookingData);
-        res.status(200).json(successResponse("Đặt tài xế thành công", booking));
+      const {
+        driverId,
+        serviceType, // per_km | hourly | daily | intercity
+        startTime,
+        endTime,
+        pickupLocation,
+        dropoffLocation,
+        price,
+        distance,
+        duration,
+      } = req.body;
+  
+      const customerId = req.user.id;
+  
+      // --- Kiểm tra bắt buộc chung ---
+      if (!driverId || !serviceType || !startTime || !pickupLocation) {
+        return res.status(400).json(
+          errorResponse(
+            "Thiếu thông tin bắt buộc: driverId, serviceType, startTime, pickupLocation.",
+            400
+          )
+        );
+      }
+  
+      // --- Kiểm tra điều kiện riêng theo loại đặt xe ---
+      switch (serviceType) {
+        case "per_km":
+        case "intercity":
+          // => Cần điểm đến, không bắt buộc endTime
+          if (!dropoffLocation) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập điểm đến (dropoffLocation).", 400));
+          }
+          break;
+  
+        case "hourly":
+          // => Cần endTime và thời gian hợp lệ (4h hoặc 8h)
+          if (!endTime) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập thời gian kết thúc (endTime).", 400));
+          }
+  
+          const hourlyDuration =
+            new Date(endTime).getTime() - new Date(startTime).getTime();
+  
+          const hours = hourlyDuration / (1000 * 60 * 60);
+  
+          if (hours !== 4 && hours !== 8) {
+            return res.status(400).json(
+              errorResponse(
+                "Thời gian thuê theo giờ chỉ cho phép 4 tiếng hoặc 8 tiếng.",
+                400
+              )
+            );
+          }
+          break;
+  
+        case "daily":
+          // => Cần endTime và thời gian từ 1 đến 3 ngày
+          if (!endTime) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập thời gian kết thúc (endTime).", 400));
+          }
+  
+          const dailyDuration =
+            new Date(endTime).getTime() - new Date(startTime).getTime();
+  
+          const days = dailyDuration / (1000 * 60 * 60 * 24);
+  
+          if (days < 1 || days > 3) {
+            return res.status(400).json(
+              errorResponse(
+                "Thời gian thuê theo ngày chỉ được phép từ 1 đến 3 ngày.",
+                400
+              )
+            );
+          }
+          break;
+  
+        default:
+          return res
+            .status(400)
+            .json(errorResponse("Loại đặt xe (serviceType) không hợp lệ.", 400));
+      }
+  
+      const bookingData = {
+        customerId,
+        driverId,
+        serviceType,
+        startTime,
+        endTime: endTime || null,
+        pickupLocation,
+        dropoffLocation: dropoffLocation || null,
+        distance: distance || null,
+        duration: duration || null,
+        price,
+        createdAt: new Date(),
+      };
+  
+      console.log("Booking data:", bookingData);
+  
+      const booking = await createBookingService(bookingData);
+      res.status(200).json(successResponse("Đặt tài xế thành công", booking));
     } catch (error) {
-        res
+      res
         .status(error.code || 500)
-        .json(errorResponse(error.message, error.code));
+        .json(errorResponse(error.message, error.code || 500));
     }
-};
+  };
+  
 
 export const getBookingById = async (req, res) => {
   try {
