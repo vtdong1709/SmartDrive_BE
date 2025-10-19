@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
 
 export const createBookingService = async (bookingData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration} = bookingData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType} = bookingData;
   const newBookingData  = {
     customerId,
     driverId,
@@ -19,6 +19,7 @@ export const createBookingService = async (bookingData) => {
     duration,
     status: "Pending",
     price,
+    serviceType,
     createdAt: new Date(),
   };
   console.log(newBookingData);
@@ -29,7 +30,7 @@ export const createBookingService = async (bookingData) => {
 
 
 export const updateBookingService = async (id, updateData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp } = updateData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp, serviceType } = updateData;
   const allowedUpdates = {
     customerId,
     driverId,
@@ -41,6 +42,7 @@ export const updateBookingService = async (id, updateData) => {
     duration,
     status,
     price,
+    serviceType,
     updatedAt: timestamp || new Date(),
   };
   Object.keys(allowedUpdates).forEach(
@@ -115,40 +117,242 @@ export const getBookingsByStatusService = async (status) => {
   return bookings;
 };
 
+// export const calculateFareService = async (
+//   pickupLocation,
+//   dropoffLocation,
+//   startTime,
+//   endTime,       
+//   serviceType,
+// ) => {
+//   if (!serviceType) throw new Error("Vui lòng chọn loại dịch vụ trước khi tính giá");
+
+//   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+//   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
+//     pickupLocation
+//   )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
+
+//   const response = await axios.get(url);
+//   if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
+
+//   const element = response.data.rows?.[0]?.elements?.[0];
+//   if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
+
+//   const distanceValue = element.distance.value; 
+//   const durationValue = element.duration.value; 
+//   const distanceKm = distanceValue / 1000;
+
+//   const hours = Math.floor(durationValue / 3600);
+//   const minutes = Math.floor((durationValue % 3600) / 60);
+//   const seconds = durationValue % 60;
+//   const estimatedDuration =
+//     (hours > 0 ? `${hours} giờ ` : "") +
+//     (minutes > 0 ? `${minutes} phút ` : "") +
+//     (seconds > 0 ? `${seconds} giây` : "");
+
+//   const currentTime = new Date(startTime);
+//   const hour = currentTime.getHours();
+//   const dayOfWeek = currentTime.getDay();
+
+//   // === Lấy bảng giá đang áp dụng ===
+//   const activePricing = await Pricing.findOne({
+//     serviceType,
+//     $or: [
+//       { effectiveTo: null },
+//       {
+//         $and: [
+//           { effectiveFrom: { $lte: currentTime } },
+//           { effectiveTo: { $gte: currentTime } },
+//         ],
+//       },
+//     ],
+//   }).sort({ effectiveFrom: -1 });
+
+//   if (!activePricing)
+//     throw new Error(`Không tìm thấy bảng giá cho loại dịch vụ: ${serviceType}`);
+
+//   const {
+//     baseFare,
+//     fareBrackets,
+//     hourBrackets,
+//     dayBrackets,
+//     multipliers,
+//     maxKmPerHour,
+//     maxKmPerDay,
+//     surchargePerKm,
+//     turnBackFees,
+//     platformFee,
+//   } = activePricing;
+
+//   // === Áp dụng hệ số thời gian ===
+//   let multiplier = 1;
+//   if (hour >= 21 && hour < 23) multiplier *= multipliers.after21h || 1;
+//   if (hour >= 23 || hour < 6) multiplier *= multipliers.after23h || 1;
+//   if (dayOfWeek === 0 || dayOfWeek === 6) multiplier *= multipliers.weekend || 1;
+
+//   const holidays = ["2025-01-01", "2025-04-30", "2025-05-01", "2025-09-02"];
+//   const isHoliday = holidays.some(
+//     (d) => currentTime.toISOString().slice(0, 10) === d
+//   );
+//   if (isHoliday) multiplier *= multipliers.holiday || 1;
+
+//   // === Tính giá cơ bản ===
+//   let fare = baseFare;
+//   let extraKmCharge = 0;
+//   let turnBackFee = 0;
+
+//   // 🆕 Thời lượng thuê theo giờ hoặc ngày (nếu có endTime)
+//   let durationHours = 0;
+//   let durationDays = 0;
+//   if (endTime) {
+//     const start = new Date(startTime);
+//     const end = new Date(endTime);
+//     const diffMs = end - start;
+//     if (diffMs <= 0) throw new Error("endTime phải lớn hơn startTime");
+
+//     durationHours = diffMs / (1000 * 60 * 60);
+//     durationDays = Math.ceil(durationHours / 24);
+//   } else {
+//     // fallback cho per_km hoặc intercity
+//     durationHours = durationValue / 3600;
+//     durationDays = Math.ceil(durationValue / (3600 * 24));
+//   }
+
+//   switch (serviceType) {
+//     case "per_km": {
+//       // Giữ nguyên
+//       const bracket =
+//         fareBrackets.find(
+//           (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
+//         ) || fareBrackets.at(-1);
+//       fare += distanceKm * bracket.pricePerKm;
+//       break;
+//     }
+
+//     case "hourly": {
+//       if (!endTime)
+//         throw new Error("Dịch vụ theo giờ yêu cầu cả startTime và endTime");
+
+//       const bracket =
+//         hourBrackets.find(
+//           (b) =>
+//             durationHours >= b.fromHour &&
+//             (b.toHour === null || durationHours <= b.toHour)
+//         ) || hourBrackets.at(-1);
+
+//       if (durationHours > 8) {
+//         throw new Error("Dịch vụ theo giờ chỉ cho phép thuê tối đa 8 tiếng mỗi ngày");
+//       }
+
+//       fare += durationHours * bracket.pricePerHour;
+
+//       // Phụ phí vượt km
+//       if (distanceKm > maxKmPerHour * durationHours) {
+//         const exceededKm = distanceKm - maxKmPerHour * durationHours;
+//         extraKmCharge = exceededKm * surchargePerKm;
+//         fare += extraKmCharge;
+//       }
+//       break;
+//     }
+
+//     case "daily": {
+//       if (!endTime)
+//         throw new Error("Dịch vụ theo ngày yêu cầu cả startTime và endTime");
+
+//       if (durationDays > 3) {
+//         throw new Error("Dịch vụ theo ngày chỉ cho phép thuê tối đa 3 ngày");
+//       }
+
+//       const bracket =
+//         dayBrackets.find(
+//           (b) =>
+//             durationDays >= b.fromDay &&
+//             (b.toDay === null || durationDays <= b.toDay)
+//         ) || dayBrackets.at(-1);
+
+//       fare += durationDays * bracket.pricePerDay;
+
+//       // Phụ phí vượt km
+//       if (distanceKm > maxKmPerDay * durationDays) {
+//         const exceededKm = distanceKm - maxKmPerDay * durationDays;
+//         extraKmCharge = exceededKm * surchargePerKm;
+//         fare += extraKmCharge;
+//       }
+//       break;
+//     }
+
+//     case "intercity": {
+//       // Giữ nguyên công thức liên tỉnh
+//       let intercityFare = 0;
+//       if (distanceKm <= 70) {
+//         intercityFare = distanceKm * fareBrackets[0].pricePerKm;
+//       } else if (distanceKm <= 100) {
+//         intercityFare =
+//           70 * fareBrackets[0].pricePerKm +
+//           (distanceKm - 70) * fareBrackets[1].pricePerKm;
+//       } else {
+//         intercityFare =
+//           70 * fareBrackets[0].pricePerKm +
+//           30 * fareBrackets[1].pricePerKm +
+//           (distanceKm - 100) * fareBrackets[2].pricePerKm;
+//       }
+
+//       fare += intercityFare;
+
+//       const turnFee =
+//         turnBackFees.find(
+//           (f) =>
+//             distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
+//         ) || null;
+
+//       if (turnFee) {
+//         turnBackFee = turnFee.fee;
+//         fare += turnBackFee;
+//       }
+//       break;
+//     }
+
+//     default:
+//       throw new Error(`Loại dịch vụ ${serviceType} chưa được hỗ trợ.`);
+//   }
+
+//   // === Áp dụng hệ số nhân ===
+//   fare *= multiplier;
+
+//   // === Cộng phí nền tảng ===
+//   fare += platformFee;
+
+//   // === Làm tròn ===
+//   fare = Math.round(fare);
+
+//   // === Trả kết quả ===
+//   return {
+//     pickupLocation,
+//     dropoffLocation,
+//     distanceKm,
+//     estimatedDuration,
+//     durationSeconds: durationValue,
+//     durationHours,
+//     durationDays,
+//     baseFare,
+//     multiplier,
+//     extraKmCharge,
+//     turnBackFee,
+//     platformFee,
+//     finalFare: fare,
+//     serviceType,
+//   };
+// };
+
 export const calculateFareService = async (
   pickupLocation,
   dropoffLocation,
   startTime,
-  endTime,        // 🆕 thêm endTime
+  endTime,       
   serviceType,
 ) => {
   if (!serviceType) throw new Error("Vui lòng chọn loại dịch vụ trước khi tính giá");
 
-  // === Lấy dữ liệu từ Google Maps API ===
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
-    pickupLocation
-  )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
-
-  const response = await axios.get(url);
-  if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
-
-  const element = response.data.rows?.[0]?.elements?.[0];
-  if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
-
-  const distanceValue = element.distance.value; // mét
-  const durationValue = element.duration.value; // giây
-  const distanceKm = distanceValue / 1000;
-
-  // Thêm phần tính thời gian dự kiến (định dạng đọc được)
-  const hours = Math.floor(durationValue / 3600);
-  const minutes = Math.floor((durationValue % 3600) / 60);
-  const seconds = durationValue % 60;
-  const estimatedDuration =
-    (hours > 0 ? `${hours} giờ ` : "") +
-    (minutes > 0 ? `${minutes} phút ` : "") +
-    (seconds > 0 ? `${seconds} giây` : "");
-
+  // === Lấy thời gian bắt đầu ===
   const currentTime = new Date(startTime);
   const hour = currentTime.getHours();
   const dayOfWeek = currentTime.getDay();
@@ -195,42 +399,88 @@ export const calculateFareService = async (
   );
   if (isHoliday) multiplier *= multipliers.holiday || 1;
 
-  // === Tính giá cơ bản ===
+  // === Khởi tạo các giá trị trả về ===
   let fare = baseFare;
+  let distanceKm = 0;
+  let durationValue = 0;
+  let estimatedDuration = "";
   let extraKmCharge = 0;
   let turnBackFee = 0;
 
-  // 🆕 Thời lượng thuê theo giờ hoặc ngày (nếu có endTime)
-  let durationHours = 0;
-  let durationDays = 0;
-  if (endTime) {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const diffMs = end - start;
-    if (diffMs <= 0) throw new Error("endTime phải lớn hơn startTime");
-
-    durationHours = diffMs / (1000 * 60 * 60);
-    durationDays = Math.ceil(durationHours / 24);
-  } else {
-    // fallback cho per_km hoặc intercity
-    durationHours = durationValue / 3600;
-    durationDays = Math.ceil(durationValue / (3600 * 24));
-  }
-
+  // === Tính theo loại dịch vụ ===
   switch (serviceType) {
-    case "per_km": {
-      // Giữ nguyên
-      const bracket =
-        fareBrackets.find(
-          (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
-        ) || fareBrackets.at(-1);
-      fare += distanceKm * bracket.pricePerKm;
+    case "per_km":
+    case "intercity": {
+      if (!pickupLocation || !dropoffLocation) 
+        throw new Error("Vui lòng nhập đầy đủ điểm đi và điểm đến");
+
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
+        pickupLocation
+      )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
+
+      const response = await axios.get(url);
+      if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
+
+      const element = response.data.rows?.[0]?.elements?.[0];
+      if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
+
+      const distanceValue = element.distance.value;
+      durationValue = element.duration.value;
+      distanceKm = distanceValue / 1000;
+
+      const hours = Math.floor(durationValue / 3600);
+      const minutes = Math.floor((durationValue % 3600) / 60);
+      const seconds = durationValue % 60;
+      estimatedDuration =
+        (hours > 0 ? `${hours} giờ ` : "") +
+        (minutes > 0 ? `${minutes} phút ` : "") +
+        (seconds > 0 ? `${seconds} giây` : "");
+
+      if (serviceType === "per_km") {
+        const bracket =
+          fareBrackets.find(
+            (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
+          ) || fareBrackets.at(-1);
+        fare += distanceKm * bracket.pricePerKm;
+      } else {
+        // intercity
+        let intercityFare = 0;
+        if (distanceKm <= 70) {
+          intercityFare = distanceKm * fareBrackets[0].pricePerKm;
+        } else if (distanceKm <= 100) {
+          intercityFare =
+            70 * fareBrackets[0].pricePerKm +
+            (distanceKm - 70) * fareBrackets[1].pricePerKm;
+        } else {
+          intercityFare =
+            70 * fareBrackets[0].pricePerKm +
+            30 * fareBrackets[1].pricePerKm +
+            (distanceKm - 100) * fareBrackets[2].pricePerKm;
+        }
+        fare += intercityFare;
+
+        const turnFee =
+          turnBackFees.find(
+            (f) => distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
+          ) || null;
+
+        if (turnFee) {
+          turnBackFee = turnFee.fee;
+          fare += turnBackFee;
+        }
+      }
       break;
     }
 
     case "hourly": {
-      if (!endTime)
-        throw new Error("Dịch vụ theo giờ yêu cầu cả startTime và endTime");
+      if (!startTime || !endTime) throw new Error("Dịch vụ theo giờ cần startTime và endTime");
+
+      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+      if (durationMs <= 0) throw new Error("endTime phải lớn hơn startTime");
+
+      const durationHours = durationMs / (1000 * 60 * 60);
+      if (durationHours > 8) throw new Error("Dịch vụ theo giờ tối đa 8 tiếng mỗi ngày");
 
       const bracket =
         hourBrackets.find(
@@ -239,28 +489,18 @@ export const calculateFareService = async (
             (b.toHour === null || durationHours <= b.toHour)
         ) || hourBrackets.at(-1);
 
-      if (durationHours > 8) {
-        throw new Error("Dịch vụ theo giờ chỉ cho phép thuê tối đa 8 tiếng mỗi ngày");
-      }
-
       fare += durationHours * bracket.pricePerHour;
-
-      // Phụ phí vượt km
-      if (distanceKm > maxKmPerHour * durationHours) {
-        const exceededKm = distanceKm - maxKmPerHour * durationHours;
-        extraKmCharge = exceededKm * surchargePerKm;
-        fare += extraKmCharge;
-      }
       break;
     }
 
     case "daily": {
-      if (!endTime)
-        throw new Error("Dịch vụ theo ngày yêu cầu cả startTime và endTime");
+      if (!startTime || !endTime) throw new Error("Dịch vụ theo ngày cần startTime và endTime");
 
-      if (durationDays > 3) {
-        throw new Error("Dịch vụ theo ngày chỉ cho phép thuê tối đa 3 ngày");
-      }
+      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      const durationDays = Math.ceil(durationHours / 24);
+
+      if (durationDays > 3) throw new Error("Dịch vụ theo ngày tối đa 3 ngày");
 
       const bracket =
         dayBrackets.find(
@@ -270,44 +510,6 @@ export const calculateFareService = async (
         ) || dayBrackets.at(-1);
 
       fare += durationDays * bracket.pricePerDay;
-
-      // Phụ phí vượt km
-      if (distanceKm > maxKmPerDay * durationDays) {
-        const exceededKm = distanceKm - maxKmPerDay * durationDays;
-        extraKmCharge = exceededKm * surchargePerKm;
-        fare += extraKmCharge;
-      }
-      break;
-    }
-
-    case "intercity": {
-      // Giữ nguyên công thức liên tỉnh
-      let intercityFare = 0;
-      if (distanceKm <= 70) {
-        intercityFare = distanceKm * fareBrackets[0].pricePerKm;
-      } else if (distanceKm <= 100) {
-        intercityFare =
-          70 * fareBrackets[0].pricePerKm +
-          (distanceKm - 70) * fareBrackets[1].pricePerKm;
-      } else {
-        intercityFare =
-          70 * fareBrackets[0].pricePerKm +
-          30 * fareBrackets[1].pricePerKm +
-          (distanceKm - 100) * fareBrackets[2].pricePerKm;
-      }
-
-      fare += intercityFare;
-
-      const turnFee =
-        turnBackFees.find(
-          (f) =>
-            distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
-        ) || null;
-
-      if (turnFee) {
-        turnBackFee = turnFee.fee;
-        fare += turnBackFee;
-      }
       break;
     }
 
@@ -324,15 +526,14 @@ export const calculateFareService = async (
   // === Làm tròn ===
   fare = Math.round(fare);
 
-  // === Trả kết quả ===
   return {
     pickupLocation,
     dropoffLocation,
     distanceKm,
     estimatedDuration,
     durationSeconds: durationValue,
-    durationHours,
-    durationDays,
+    durationHours: serviceType === "hourly" ? (new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60) : 0,
+    durationDays: serviceType === "daily" ? Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60*24)) : 0,
     baseFare,
     multiplier,
     extraKmCharge,
@@ -340,6 +541,7 @@ export const calculateFareService = async (
     platformFee,
     finalFare: fare,
     serviceType,
+   
   };
 };
 

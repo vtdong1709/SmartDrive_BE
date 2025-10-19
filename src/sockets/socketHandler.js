@@ -113,7 +113,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         console.log(`Reloaded ${onlineDrivers.size} drivers from Redis`);
       }
     
-      const { customerId, pickupLocation, dropoffLocation, finalFare } = data;
+      const { customerId, pickupLocation, dropoffLocation, finalFare ,serviceType, startTime, endTime} = data;
       const customerSocketId = socket.id;
       
       // Lấy thông tin khách hàng
@@ -131,19 +131,44 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       console.log(`Checking ${onlineDrivers.size} online drivers...`);
       //Lọc danh sách tài xế gần điểm đón
       const nearbyDrivers = [];
-      for (const [driverId, info] of onlineDrivers.entries()) {
-        const distance = calculateDistance(
-          pickupLocation.lat,
-          pickupLocation.lng,
-          info.location.lat,
-          info.location.lng
-        );
-        if (distance <= 20) {
-          // Bán kính 3km
-          console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
-          nearbyDrivers.push({ driverId, socketId: info.socketId });
+      if (serviceType === 'hourly' || serviceType === 'daily') {
+        // Với chuyến theo giờ/ngày, lấy TẤT CẢ tài xế online
+        for (const [driverId, info] of onlineDrivers.entries()) {
+            if (info.socketId) { // Chỉ những tài xế đang có kết nối socket mới nhận được yêu cầu
+              nearbyDrivers.push({ driverId, socketId: info.socketId });
+            }
         }
-      }
+        console.log(`Found ${nearbyDrivers.length} total online drivers for hourly/daily booking.`);
+    } else {
+        // Với chuyến theo km, giữ logic tìm tài xế GẦN
+        const MAX_DISTANCE_KM = 20; // Bán kính 20km
+        for (const [driverId, info] of onlineDrivers.entries()) {
+            const distance = calculateDistance(
+                pickupLocation.lat,
+                pickupLocation.lng,
+                info.location.lat,
+                info.location.lng
+            );
+            if (distance <= MAX_DISTANCE_KM && info.socketId) {
+                console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
+                nearbyDrivers.push({ driverId, socketId: info.socketId });
+            }
+        }
+        console.log(`Found ${nearbyDrivers.length} nearby drivers.`);
+    }
+      // for (const [driverId, info] of onlineDrivers.entries()) {
+      //   const distance = calculateDistance(
+      //     pickupLocation.lat,
+      //     pickupLocation.lng,
+      //     info.location.lat,
+      //     info.location.lng
+      //   );
+      //   if (distance <= 20) {
+      //     // Bán kính 3km
+      //     console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
+      //     nearbyDrivers.push({ driverId, socketId: info.socketId });
+      //   }
+      // }
 
       if (nearbyDrivers.length === 0) {
         console.log("No nearby drivers found for", customerId);
@@ -173,6 +198,10 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         dropoffLocation,
         estimatedFare: finalFare,
         customerId: customerId,
+        serviceType: serviceType,
+        startTime: startTime,
+        endTime: endTime,
+        price: finalFare,
         customerInfo: {
           id: customerInfo._id,
           fullName: customerInfo.fullName,
@@ -274,6 +303,10 @@ function nextDriver(io, requestId) {
     dropoffLocation: reqObj.data.dropoffLocation,
     estimatedFare: reqObj.data.finalFare,
     customerId: reqObj.data.customerId,
+    serviceType: reqObj.data.serviceType,
+    startTime: reqObj.data.startTime,
+    endTime: reqObj.data.endTime,
+    price: reqObj.data.finalFare,
     customerInfo: reqObj.customerInfo ? {
       id: reqObj.customerInfo._id,
       fullName: reqObj.customerInfo.fullName,
