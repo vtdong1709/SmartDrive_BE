@@ -199,6 +199,8 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         estimatedFare: finalFare,
         customerId: customerId,
         serviceType: serviceType,
+        paymentMethod: paymentMethod,
+        paymentStatus: paymentStatus,
         startTime: startTime,
         endTime: endTime,
         price: finalFare,
@@ -266,6 +268,26 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       nextDriver(io, requestId);
     });
 
+    socket.on("driverLocationUpdate", async ({ driverId, lat, lng }) => {
+      if (!driverId) return;
+      await updateDriverLocation(driverId, lat, lng);
+    
+      // cache latest location
+      const existing = await redis.get(`driver:${driverId}`);
+      const info = existing ? JSON.parse(existing) : {};
+      info.location = { lat, lng };
+      info.lastSeen = Date.now();
+      await redis.set(`driver:${driverId}`, JSON.stringify(info));
+    
+      if (onlineDrivers.has(driverId)) {
+        onlineDrivers.get(driverId).location = { lat, lng };
+      }
+    
+      // find active request/booking to forward to customer
+      // if you have bookingId mapping, emit globally so clients filter by driverId:
+      io.emit("driverLocationUpdate", { driverId, location: { lat, lng } });
+    });
+
     // Ngắt kết nối
     socket.on("disconnect", async() => {
       for (const [driverId, info] of onlineDrivers.entries()) {
@@ -307,6 +329,8 @@ function nextDriver(io, requestId) {
     startTime: reqObj.data.startTime,
     endTime: reqObj.data.endTime,
     price: reqObj.data.finalFare,
+    paymentMethod: reqObj.data.paymentMethod,
+    paymentStatus: reqObj.data.paymentStatus,
     customerInfo: reqObj.customerInfo ? {
       id: reqObj.customerInfo._id,
       fullName: reqObj.customerInfo.fullName,

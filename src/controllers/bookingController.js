@@ -39,6 +39,8 @@ export const createBooking = async (req, res) => {
         price,
         distance,
         duration,
+        paymentMethod,
+        paymentStatus,
       } = req.body;
   
       const customerId = req.user.id;
@@ -128,6 +130,8 @@ export const createBooking = async (req, res) => {
         distance: distance || null,
         duration: duration || null,
         price,
+        paymentMethod,
+        paymentStatus,
         createdAt: new Date(),
       };
   

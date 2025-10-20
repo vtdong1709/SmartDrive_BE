@@ -121,6 +121,14 @@ const router = express.Router();
  *               duration:
  *                 type: number
  *                 example: 45
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: ["momo", "vnpay", "paypal", "cash"]
+ *                 example: "cash"
+ *               paymentStatus:
+ *                 type: string
+ *                 enum: ["Pending", "Paid", "Failed"]
+ *                 example: "Pending"
  *     responses:
  *       200:
  *         description: Booking created successfully
@@ -198,6 +206,14 @@ router.get("/get/:id", authenticate,authorizeRoles("admin","driver","renter"), g
  *                 type: string
  *               price:
  *                 type: number
+ *               paymentMethod:
+ *                 type: string
+ *                 enum: ["momo", "vnpay", "paypal", "cash"]
+ *                 example: "cash"
+ *               paymentStatus:
+ *                 type: string
+ *                 enum: ["Pending", "Paid", "Failed"]
+ *                 example: "Pending"
  *     responses:
  *       200:
  *         description: Booking updated successfully
