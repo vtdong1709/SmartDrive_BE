@@ -20,6 +20,8 @@ export const createBookingService = async (bookingData) => {
     status: "Pending",
     price,
     serviceType,
+    paymentMethod: "cash",
+    paymentStatus: "Pending",
     createdAt: new Date(),
   };
   console.log(newBookingData);
@@ -30,7 +32,7 @@ export const createBookingService = async (bookingData) => {
 
 
 export const updateBookingService = async (id, updateData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp, serviceType } = updateData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp, serviceType, paymentMethod, paymentStatus } = updateData;
   const allowedUpdates = {
     customerId,
     driverId,
@@ -43,6 +45,8 @@ export const updateBookingService = async (id, updateData) => {
     status,
     price,
     serviceType,
+    paymentMethod,
+    paymentStatus,
     updatedAt: timestamp || new Date(),
   };
   Object.keys(allowedUpdates).forEach(

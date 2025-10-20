@@ -12,6 +12,8 @@ const bookingSchema = new mongoose.Schema({
     status: { type: String, enum: ["Pending", "Confirmed", "Arriving", "Ongoing", "Completed", "Cancelled"], default: "Pending" },
     price: { type: Number, required: true },
     serviceType: { type: String, enum: ["per_km", "hourly", "daily", "intercity"], required: true },
+    paymentMethod: { type: String, enum: ["momo", "vnpay", "paypal", "cash"], required: true },
+    paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
     createdAt: { type: Date, default: Date.now }
 });
 
