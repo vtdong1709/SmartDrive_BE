@@ -64,16 +64,16 @@ export function setupSocket(io) {
     });
 
     // Listen for booking acceptance confirmation
-socket.on("bookingYouAccepted", async (payload) => {
-  // Navigate with correct bookingId from renter
-  router.push({
-    pathname: "/(booking)/move-driver",
-    params: {
-      bookingId: payload.bookingId || "",
-      // ... other params
-    },
-  });
-});
+// socket.on("bookingYouAccepted", async (payload) => {
+//   // Navigate with correct bookingId from renter
+//   router.push({
+//     pathname: "/(booking)/move-driver",
+//     params: {
+//       bookingId: payload.bookingId || "",
+//       // ... other params
+//     },
+//   });
+// });
 
 // Khi renter tạo booking xong và gửi bookingId
 socket.on("bookingCreated", ({ requestId, bookingId }) => {
@@ -113,7 +113,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         console.log(`Reloaded ${onlineDrivers.size} drivers from Redis`);
       }
     
-      const { customerId, pickupLocation, dropoffLocation, finalFare ,serviceType, startTime, endTime} = data;
+      const { customerId, pickupLocation, dropoffLocation, finalFare ,serviceType, startTime, endTime, paymentMethod, paymentStatus } = data;
       const customerSocketId = socket.id;
       
       // Lấy thông tin khách hàng
@@ -132,23 +132,34 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       //Lọc danh sách tài xế gần điểm đón
       const nearbyDrivers = [];
       if (serviceType === 'hourly' || serviceType === 'daily') {
-        // Với chuyến theo giờ/ngày, lấy TẤT CẢ tài xế online
+        const MAX_DISTANCE_KM = 20;
         for (const [driverId, info] of onlineDrivers.entries()) {
-            if (info.socketId) { // Chỉ những tài xế đang có kết nối socket mới nhận được yêu cầu
-              nearbyDrivers.push({ driverId, socketId: info.socketId });
+             const distance = calculateDistance(
+                pickupLocation.lat,
+                pickupLocation.lng,
+                info.location.lat,
+                info.location.lng
+              );
+              console.log("distance", distance.toFixed(2));
+            if (distance <= MAX_DISTANCE_KM && info.socketId) {
+                console.log(` Driver ${driverId} is within ${distance.toFixed(2)} km for ${serviceType} booking`);
+                nearbyDrivers.push({ driverId, socketId: info.socketId });
             }
         }
-        console.log(`Found ${nearbyDrivers.length} total online drivers for hourly/daily booking.`);
+
+        console.log(`Found ${nearbyDrivers.length} drivers within ${MAX_DISTANCE_KM} km for ${serviceType} booking.`);
     } else {
         // Với chuyến theo km, giữ logic tìm tài xế GẦN
         const MAX_DISTANCE_KM = 20; // Bán kính 20km
         for (const [driverId, info] of onlineDrivers.entries()) {
+          console.log("pickupLocation", pickupLocation);
             const distance = calculateDistance(
                 pickupLocation.lat,
                 pickupLocation.lng,
                 info.location.lat,
                 info.location.lng
             );
+           
             if (distance <= MAX_DISTANCE_KM && info.socketId) {
                 console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
                 nearbyDrivers.push({ driverId, socketId: info.socketId });
@@ -255,6 +266,21 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       // console.log(`Driver ${driverId} accepted booking ${requestId}`);
     });
 
+    //thay đổi status booking
+    socket.on("updateBookingStatus", async ({ bookingId, status }) => {
+        try {
+             console.log(`Updating booking status: ${bookingId} to ${status}`);
+            io.emit("bookingStatusUpdated", {
+                bookingId,
+                updates: { status },
+                timestamp: new Date().toISOString()
+            });
+            console.log(`Broadcasted status update for booking ${bookingId}`);
+        } catch (error) {
+            console.error("Error updating booking status:", error);
+        }
+    });
+
     // Khi tài xế từ chối
     socket.on("driverDecline", ({ requestId, driverId }) => {
       const reqObj = pendingRequests.get(requestId);
@@ -287,6 +313,23 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       // if you have bookingId mapping, emit globally so clients filter by driverId:
       io.emit("driverLocationUpdate", { driverId, location: { lat, lng } });
     });
+
+         // khi client (khách hoặc tài xế) báo hủy cuốc
+        socket.on("bookingCancelled", ({ bookingId, reason }) => {
+            console.log("bookingCancelled:", bookingId, reason);
+        // Phát thông báo hủy cuốc cho tất cả client (hoặc target theo bookingId nếu có mapping)
+        io.emit("bookingCancelled", { bookingId, reason, timestamp: new Date().toISOString() });
+
+        // Đồng bộ trạng thái để tất cả màn hình update UI
+        io.emit("bookingStatusUpdated", {
+        bookingId,
+        updates: { status: "Cancelled" },
+        timestamp: new Date().toISOString(),
+      });
+
+  // Nếu có liên quan tới pendingRequests thì dọn dẹp (đa số hủy sau khi đã có bookingId nên pendingRequests ko còn)
+  // pendingRequests.delete(requestId) // chỉ nếu bạn map được requestId tương ứng
+});
 
     // Ngắt kết nối
     socket.on("disconnect", async() => {
