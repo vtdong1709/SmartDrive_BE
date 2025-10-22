@@ -50,7 +50,9 @@ const bookingSchema = new mongoose.Schema({
     sparse: true,
     default: null,
   },
+  paymentMethod: { type: String, enum: ["momo", "vnpay", "paypal", "cash"], required: true },
   paymentLinkId: { type: String, default: null },
+  paymentStatus: { type: String, enum: ["Pending", "Paid", "Failed"], default: "Pending" },
 });
 
 /**
