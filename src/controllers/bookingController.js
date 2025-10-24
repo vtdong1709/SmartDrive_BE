@@ -186,8 +186,9 @@ export const deleteBooking = async (req, res) => {
 
 export const getAllBookings = async (req, res) => {
     try {
-        const bookings = await getAllBookingsService();
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getAllBookingsService(page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)
@@ -198,8 +199,9 @@ export const getAllBookings = async (req, res) => {
 export const getBookingsByUserId = async (req, res) => {
     try {
         const { userId } = req.params;
-        const bookings = await getBookingsByUserIdService(userId);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByUserIdService(userId, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)
@@ -210,8 +212,9 @@ export const getBookingsByUserId = async (req, res) => {
 export const getBookingsByDriverId = async (req, res) => {
     try {
         const { driverId } = req.params;
-        const bookings = await getBookingsByDriverIdService(driverId);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByDriverIdService(driverId, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
   } catch (error) {
     res
     .status(error.code || 500)
@@ -222,8 +225,9 @@ export const getBookingsByDriverId = async (req, res) => {
 export const getBookingsByStatus = async (req, res) => {
     try {
         const { status } = req.params;
-        const bookings = await getBookingsByStatusService(status);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByStatusService(status, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)

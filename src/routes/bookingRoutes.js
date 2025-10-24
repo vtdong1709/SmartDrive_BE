@@ -271,12 +271,14 @@ router.delete("/delete/:id", authenticate, authorizeRoles("driver", "admin"),del
  *         required: false
  *         schema:
  *           type: number
+ *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         required: false
  *         schema:
  *           type: number
+ *           default: 10
  *         description: Limit number
  *       - in: query
  *         name: sort
@@ -322,12 +324,14 @@ router.get("/get-all", authenticate, authorizeRoles("admin"),getAllBookings);
  *         required: false
  *         schema:
  *           type: number
+ *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         required: false
  *         schema:
  *           type: number
+ *           default: 10
  *         description: Limit number
  *     responses:
  *       200:
@@ -339,7 +343,7 @@ router.get("/get-all", authenticate, authorizeRoles("admin"),getAllBookings);
  *       403:
  *         description: Forbidden
  */
-router.get("/user/:userId", authenticate,authorizeRoles("user"), getBookingsByUserId);
+router.get("/user/:userId", authenticate,authorizeRoles("admin", "renter"), getBookingsByUserId);
 
 /**
  * @swagger
@@ -361,12 +365,14 @@ router.get("/user/:userId", authenticate,authorizeRoles("user"), getBookingsByUs
  *         required: false
  *         schema:
  *           type: number
+ *           default: 1
  *         description: Page number
  *       - in: query
  *         name: limit
  *         required: false
  *         schema:
  *           type: number
+ *           default: 10
  *         description: Limit number
  *     responses:
  *       200:
@@ -378,7 +384,7 @@ router.get("/user/:userId", authenticate,authorizeRoles("user"), getBookingsByUs
  *       403:
  *         description: Forbidden
  */
-router.get("/driver/:driverId", authenticate, authorizeRoles("driver"),getBookingsByDriverId);
+router.get("/driver/:driverId", authenticate, authorizeRoles("driver","admin"),getBookingsByDriverId);
 
 /**
  * @swagger
@@ -395,6 +401,20 @@ router.get("/driver/:driverId", authenticate, authorizeRoles("driver"),getBookin
  *         schema:
  *           type: string
  *           enum: [Pending, Confirmed, Completed, Cancelled]
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: number
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: number
+ *           default: 10
+ *         description: Limit number
  *     responses:
  *       200:
  *         description: Bookings fetched successfully

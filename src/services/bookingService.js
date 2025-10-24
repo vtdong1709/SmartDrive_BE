@@ -82,9 +82,23 @@ export const deleteBookingService = async (id) => {
   return booking;
 };
 
-export const getAllBookingsService = async () => {
-  const bookings = await Booking.find().populate("customerId").populate("driverId");
-  return bookings;
+export const getAllBookingsService = async (page = 1, limit = 10) => {
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find().populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments();
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
   export const getBookingByIdService = async (id) => {
@@ -97,28 +111,71 @@ export const getAllBookingsService = async () => {
       return booking;
     };
 
-export const getBookingsByUserIdService = async (userId) => {
+export const getBookingsByUserIdService = async (userId, page = 1, limit = 10) => {
   if (!userId) {
     throw new errorResponse("Không tìm thấy người dùng", 404);
   }
-  const bookings = await Booking.find({ customerId: userId }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ customerId: userId }).populate("customerId").populate("driverId") .sort({ createdAt: -1 }) // lấy mới nhất trước
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ customerId: userId });
+
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
-export const getBookingsByDriverIdService = async (driverId) => {
+export const getBookingsByDriverIdService = async (driverId, page = 1, limit = 10) => {
   if (!driverId) {
     throw new errorResponse("Không tìm thấy tài xế", 404);
   }
-  const bookings = await Booking.find({ driverId: driverId }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ driverId: driverId }).populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ driverId: driverId });
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
-export const getBookingsByStatusService = async (status) => {
+export const getBookingsByStatusService = async (status, page = 1, limit = 10) => {
   if (!status) {
     throw new errorResponse("Không tìm thấy trạng thái", 404);
   }
-  const bookings = await Booking.find({ status: status }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ status: status }).populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ status: status });
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
 export const calculateFareService = async (
