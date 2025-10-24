@@ -1,4 +1,6 @@
 import { getTransporter } from "../config/mailConfig.js";
+import Notification from "../models/Notification.js";
+import redis from "../redis.js";
 
 function baseTemplate({ title, body }) {
   return `
@@ -53,5 +55,82 @@ export async function notifyApplicationRejected(to, name, reason) {
   });
 }
 
+/**
+ * sendNotification
+ * - lưu notification vào MongoDB (bắt buộc userId)
+ * - lưu cache vào Redis (list)
+ * - emit realtime qua socket room `user:${userId}`
+ *
+ * @param {object} io - socket.io server instance
+ * @param {object} opts - { userId, title, message, type, meta, email, sendMail }
+ */
+export async function sendNotification(io, { userId, title, message, type = "info", meta = {}, email = null, sendMail = false }) {
+  if (!userId) {
+    console.warn("sendNotification: missing userId");
+    return null;
+  }
 
+  // 1) Lưu vào DB
+  let notification = null;
+  try {
+    notification = await Notification.create({
+      userId,
+      type,
+      title,
+      message,
+      meta,
+      isRead: false,
+    });
+  } catch (err) {
+    console.error("Error creating Notification in DB:", err?.message || err);
+  }
+
+  // 2) Lưu cache vào Redis (push left so newest first)
+  try {
+    const key = `notifications:${String(userId)}`;
+    const payload = JSON.stringify({
+      _id: notification?._id || null,
+      userId,
+      type,
+      title,
+      message,
+      meta,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+    await redis.lpush(key, payload);
+    await redis.ltrim(key, 0, 199);
+  } catch (err) {
+    console.error("Redis push notification error:", err?.message || err);
+  }
+
+  // 3) Emit realtime tới room user:{userId}
+  try {
+    io.to(`user:${userId}`).emit("newNotification", notification || { title, message, meta, type, createdAt: new Date() });
+    // cũng emit đến generic channel để admin/dashboard lắng nghe nếu muốn
+    io.emit("notificationBroadcast", { userId, title, message, type, meta, timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error("Socket emit error:", err?.message || err);
+  }
+
+  return notification;
+}
+
+/**
+ * getCachedNotifications(userId)
+ * - lấy từ Redis, nếu ko có thì read DB (caller logic)
+ */
+export async function getCachedNotifications(userId, limit = 50) {
+  try {
+    const key = `notifications:${String(userId)}`;
+    const items = await redis.lrange(key, 0, limit - 1);
+    if (!items || items.length === 0) return [];
+    return items.map((s) => {
+      try { return JSON.parse(s); } catch { return null; }
+    }).filter(Boolean);
+  } catch (err) {
+    console.error("getCachedNotifications error:", err?.message || err);
+    return [];
+  }
+}
 

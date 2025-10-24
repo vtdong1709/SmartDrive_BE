@@ -2,6 +2,8 @@ import crypto from "crypto";
 import { setMyAvailabilityService, updateDriverLocation } from "../services/driverApplicationService.js";
 import { getUserById } from "../services/userService.js";
 import redis from "../redis.js";
+import { sendNotification } from "../services/notificationService.js";
+import Booking from "../models/Booking.js";
 
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
@@ -53,6 +55,9 @@ export function setupSocket(io) {
       if (onlineDrivers.has(driverId)) {
         onlineDrivers.get(driverId).location = { lat, lng };
       }
+
+      // realtime location cho khách hàng
+      io.emit("driverLocationUpdate", { driverId, location: { lat, lng } });
     });
 
     // Khi tài xế tắt online
@@ -147,6 +152,26 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
             }
         }
 
+        if (nearbyDrivers.length === 0) {
+          console.log("No nearby drivers found for", customerId);
+          io.to(customerSocketId).emit("noDriverAvailable", {
+            message: "Không có tài xế nào gần bạn vào lúc này.",
+          });
+  
+          // gửi notification realtime + lưu DB (nếu muốn lưu cho customer) - dùng sendNotification
+          try {
+            await sendNotification(io, {
+              userId: customerId,
+              title: "Không tìm thấy tài xế",
+              message: "Xin lỗi, hiện chưa có tài xế khả dụng gần bạn. Vui lòng thử lại sau.",
+              type: "warning",
+              meta: { pickupLocation, serviceType },
+            });
+          } catch (err) {
+            console.error("Failed to send 'no driver' notification:", err?.message || err);
+          }
+          return;
+        }
         console.log(`Found ${nearbyDrivers.length} drivers within ${MAX_DISTANCE_KM} km for ${serviceType} booking.`);
     } else {
         // Với chuyến theo km, giữ logic tìm tài xế GẦN
@@ -186,6 +211,20 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         io.to(customerSocketId).emit("noDriverAvailable", {
           message: "Không có tài xế nào gần bạn vào lúc này.",
         });
+
+        // gửi notification realtime + lưu DB (nếu muốn lưu cho customer) - dùng sendNotification
+        try {
+          await sendNotification(io, {
+            userId: customerId,
+            title: "Không tìm thấy tài xế",
+            message: "Xin lỗi, hiện chưa có tài xế khả dụng gần bạn. Vui lòng thử lại sau.",
+            type: "warning",
+            meta: { pickupLocation, serviceType },
+            // email: customerInfo.email, sendMail: false // nếu muốn gửi email bật lên
+          });
+        } catch (err) {
+          console.error("Failed to send 'no driver' notification:", err?.message || err);
+        }
         return;
       }
 
@@ -236,7 +275,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
     });
 
     // Khi tài xế chấp nhận cuốc
-    socket.on("driverAccept", ({ requestId, driverId }) => {
+    socket.on("driverAccept", async ({ requestId, driverId }) => {
       const reqObj = pendingRequests.get(requestId);
       if (!reqObj) return;
 
@@ -255,6 +294,20 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         requestId: requestId,
       });
 
+      try {
+        await sendNotification(io, {
+          userId: reqObj.data.customerId,
+          title: "Tài xế đã nhận chuyến",
+          message: `Tài xế đã nhận chuyến của bạn. Tên tài xế: ${driverId}`,
+          type: "booking",
+          meta: { requestId, driverId },
+          // email: reqObj.customerInfo?.email, sendMail: false
+        });
+        console.log("sendNotification bookingConfirmed to customer", reqObj.data.customerId);
+      } catch (err) {
+        console.error("Failed to send bookingConfirmed notification:", err?.message || err);
+      }
+
       reqObj.waitingForBookingId = true;
   pendingRequests.set(requestId, reqObj);
   console.log(`Driver ${driverId} accepted booking ${requestId}, waiting for bookingId from renter`);
@@ -270,12 +323,61 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
     socket.on("updateBookingStatus", async ({ bookingId, status }) => {
         try {
              console.log(`Updating booking status: ${bookingId} to ${status}`);
+             const booking = await Booking.findById(bookingId)
+             .populate("customerId")
+             .populate("driverId");
+
+             if (!booking) {
+                console.log("Booking not found");
+              return;
+            }
+            booking.status = status;
+            await booking.save();
+
             io.emit("bookingStatusUpdated", {
                 bookingId,
                 updates: { status },
+                customerId: booking.customerId || reqObj.data.customerId || null,
+                driverId: booking.driverId || reqObj.data.driverId || null,
                 timestamp: new Date().toISOString()
             });
             console.log(`Broadcasted status update for booking ${bookingId}`);
+            // if (customerId) {
+              let title = "Cập nhật chuyến đi";
+              let message = `Trạng thái chuyến đi đã đổi: ${status}`;
+              if (status === "Completed") {
+                title = "Chuyến đi đã hoàn tất";
+                message = "Cảm ơn bạn đã sử dụng SmartDrive. Hãy đánh giá tài xế nhé!";
+              } else if (status === "Ongoing") {
+                title = "Chuyến đi bắt đầu";
+                message = "Tài xế đã bắt đầu hành trình.";
+              } else if (status === "Arriving") {
+                title = "Tài xế đang đến";
+                message = "Tài xế đang tới điểm đón của bạn.";
+              } else if (status === "Cancelled") {
+                title = "Chuyến đi bị hủy";
+                message = "Chuyến đi đã bị hủy.";
+              }
+    
+              await sendNotification(io, {
+                userId: booking.customerId?._id || null,
+                title,
+                message,
+                type: "booking",
+                meta: { bookingId, status },
+                // sendMail: false
+              });
+            // }
+            if (booking.driverId?._id) {
+              await sendNotification(io, {
+                userId: booking.driverId?._id || null,
+                title: `Cập nhật chuyến ${bookingId}`,
+                message: `Trạng thái chuyến đi: ${status}`,
+                type: "booking",
+                meta: { bookingId, status },
+              });
+            }
+    
         } catch (error) {
             console.error("Error updating booking status:", error);
         }
@@ -291,6 +393,11 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
 
       clearTimeout(reqObj.timerId);
       console.log(`Driver ${driverId} declined booking ${requestId}`);
+      io.to(reqObj.customerSocketId).emit("notification", {
+        type: "info",
+        title: "Tài xế từ chối chuyến đi",
+        message: "Tài xế hiện tại không thể nhận chuyến, hệ thống đang tìm tài xế khác...",
+      });
       nextDriver(io, requestId);
     });
 
@@ -315,7 +422,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
     });
 
          // khi client (khách hoặc tài xế) báo hủy cuốc
-        socket.on("bookingCancelled", ({ bookingId, reason }) => {
+        socket.on("bookingCancelled", async ({ bookingId, reason }) => {
             console.log("bookingCancelled:", bookingId, reason);
         // Phát thông báo hủy cuốc cho tất cả client (hoặc target theo bookingId nếu có mapping)
         io.emit("bookingCancelled", { bookingId, reason, timestamp: new Date().toISOString() });
@@ -326,9 +433,28 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         updates: { status: "Cancelled" },
         timestamp: new Date().toISOString(),
       });
-
-  // Nếu có liên quan tới pendingRequests thì dọn dẹp (đa số hủy sau khi đã có bookingId nên pendingRequests ko còn)
-  // pendingRequests.delete(requestId) // chỉ nếu bạn map được requestId tương ứng
+      try {
+        if (customerId) {
+          await sendNotification(io, {
+            userId: customerId,
+            title: "Chuyến đi bị hủy",
+            message: reason ? `Lý do: ${reason}` : "Chuyến đi của bạn đã bị hủy.",
+            type: "warning",
+            meta: { bookingId, reason },
+          });
+        }
+        if (driverId) {
+          await sendNotification(io, {
+            userId: driverId,
+            title: "Khách hàng hủy chuyến",
+            message: reason ? `Lý do: ${reason}` : "Khách hàng đã hủy chuyến.",
+            type: "warning",
+            meta: { bookingId, reason },
+          });
+        }
+      } catch (err) {
+        console.error("Failed to send bookingCancelled notifications:", err?.message || err);
+      }
 });
 
     // Ngắt kết nối
@@ -356,6 +482,13 @@ function nextDriver(io, requestId) {
     io.to(reqObj.customerSocketId).emit("noDriverAvailable", {
       message: "Không tìm thấy tài xế khả dụng.",
     });
+    sendNotification(io, {
+      userId: reqObj.data.customerId,
+      title: "Không tìm thấy tài xế",
+      message: "Rất tiếc, không có tài xế phù hợp. Vui lòng thử lại sau.",
+      type: "warning",
+      meta: { requestId },
+    }).catch((e) => console.error("sendNotification error:", e));
     if (reqObj.timerId) clearTimeout(reqObj.timerId);
     pendingRequests.delete(requestId);
     return;
