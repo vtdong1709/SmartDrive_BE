@@ -337,14 +337,18 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
             io.emit("bookingStatusUpdated", {
                 bookingId,
                 updates: { status },
-                customerId: booking.customerId || reqObj.data.customerId || null,
-                driverId: booking.driverId || reqObj.data.driverId || null,
+                customerId: booking.customerId._id?.toString() || null,
+                driverId: booking.driverId._id?.toString() || null,
                 timestamp: new Date().toISOString()
             });
+            console.log("booking status update", status);
+            console.log("booking.customerId._id", booking.customerId._id?.toString());
+            console.log("booking.driverId._id", booking.driverId._id?.toString());
             console.log(`Broadcasted status update for booking ${bookingId}`);
             // if (customerId) {
               let title = "Cập nhật chuyến đi";
               let message = `Trạng thái chuyến đi đã đổi: ${status}`;
+              console.log("message", message);
               if (status === "Completed") {
                 title = "Chuyến đi đã hoàn tất";
                 message = "Cảm ơn bạn đã sử dụng SmartDrive. Hãy đánh giá tài xế nhé!";
@@ -360,7 +364,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
               }
     
               await sendNotification(io, {
-                userId: booking.customerId?._id || null,
+                userId: booking.customerId?._id?.toString() || null,
                 title,
                 message,
                 type: "booking",
@@ -370,7 +374,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
             // }
             if (booking.driverId?._id) {
               await sendNotification(io, {
-                userId: booking.driverId?._id || null,
+                userId: booking.driverId?._id?.toString() || null,
                 title: `Cập nhật chuyến ${bookingId}`,
                 message: `Trạng thái chuyến đi: ${status}`,
                 type: "booking",

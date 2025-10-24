@@ -1,4 +1,5 @@
 import axios from "axios";
+import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import { errorResponse } from "../utils/apiResponse.js";
 import Pricing from "../models/Pricing.js";
@@ -439,4 +440,46 @@ export const findDriver = async (req, res) => {
 export const updateBookingStatusService = async (bookingId, status) => {
   const booking = await Booking.findByIdAndUpdate(bookingId, { status }, { new: true });
   return booking;
+};
+
+
+// thống kê cho tài xế
+export const getDriverStatsService = async (driverId) => {
+  if (!driverId || !mongoose.Types.ObjectId.isValid(driverId)) {
+    throw new Error("Valid driverId is required");
+  }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // Lấy tất cả booking hôm nay của tài xế
+  const bookings = await Booking.find({
+    driverId,
+    status: "Completed",
+    startTime: { $gte: startOfDay, $lte: endOfDay },
+  });
+
+  const tripsToday = bookings.length;
+  const incomeToday = bookings.reduce((sum, b) => {
+    const tripIncome = (b.price || 0) * 0.75; // trừ 25%
+    return sum + tripIncome;
+  }, 0);
+  const durationToday = bookings.reduce((sum, b) => {
+    const start = new Date(b.startTime);
+    const end = new Date(b.endTime);
+    return sum + (end - start) / 3600000; // giờ
+  }, 0);
+
+  const ratingSum = bookings.reduce((sum, b) => sum + (b.rating || 0), 0);
+  const ratingAverage = bookings.length > 0 ? (ratingSum / bookings.length).toFixed(1) : 0;
+
+  return {
+    tripsToday,
+    incomeToday,
+    durationToday: durationToday.toFixed(1),
+    ratingAverage: parseFloat(ratingAverage),
+  };
 };

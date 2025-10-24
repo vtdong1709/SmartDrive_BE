@@ -6,6 +6,7 @@ import { calculateFare, createBooking,
       getBookingsByDriverId, 
       getBookingsByStatus, 
       getBookingsByUserId, 
+      getDriverStats, 
       updateBooking, 
       updateBookingStatus
     } from "../controllers/bookingController.js";
@@ -344,6 +345,28 @@ router.get("/get-all", authenticate, authorizeRoles("admin"),getAllBookings);
  *         description: Forbidden
  */
 router.get("/user/:userId", authenticate,authorizeRoles("admin", "renter"), getBookingsByUserId);
+
+/**
+ * @swagger
+ * /api/bookings/driver/stats:
+ *   get:
+ *     summary: Lấy thống kê trong ngày của tài xế
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       '200':
+ *         description: stats fetched successfully
+ *       '404':
+ *         description: Stats not found
+ *       '500':
+ *         description: Internal server error
+ *       '401':
+ *         description: Unauthorized
+ *       '403':
+ *         description: Forbidden
+ */
+router.get("/driver/stats", authenticate, authorizeRoles("driver"), getDriverStats);
 
 /**
  * @swagger
@@ -743,7 +766,6 @@ router.post("/calculateFare", calculateFare);
  *         description: Forbidden
  */
 router.patch("/updateStatus/:id", authenticate, updateBookingStatus);
-
 
 
 export default router; 
