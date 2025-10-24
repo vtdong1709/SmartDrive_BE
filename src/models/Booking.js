@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema({
-    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
-    driverId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // tài xế cũng là user
+    customerId: { type: mongoose.Schema.Types.ObjectId, ref: "users", required: true },
+    driverId: { type: mongoose.Schema.Types.ObjectId, ref: "users", required: true }, // tài xế cũng là user
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
     pickupLocation: { type: String, required: true },
