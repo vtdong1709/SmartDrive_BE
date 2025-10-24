@@ -18,12 +18,27 @@ const router = express.Router();
 
 /**
  * @swagger
- * /api/notifications:
+ * /api/notifications/get-all:
  *   get:
  *     summary: Get all notifications of the authenticated user
  *     tags: [Notifications]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         required: false
+ *         schema:
+ *           type: number
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema:
+ *           type: number
+ *           default: 10
+ *         description: Limit number
  *     responses:
  *       200:
  *         description: Successfully retrieved notifications
@@ -36,7 +51,7 @@ const router = express.Router();
  *       401:
  *         description: Unauthorized - missing or invalid token
  */
-router.get("/",authenticate, getNotifications);
+router.get("/get-all",authenticate, getNotifications);
 
 /**
  * @swagger
@@ -123,5 +138,45 @@ router.put("/read-all",authenticate, markAllAsRead);
  *         description: Unauthorized
  */
 router.delete("/:id",authenticate, deleteNotification);
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Notification:
+ *       type: object
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: Notification ID
+ *         userId:
+ *           type: string
+ *           description: The ID of the user who receives the notification
+ *         title:
+ *           type: string
+ *           description: The title of the notification
+ *         message:
+ *           type: string
+ *           description: The content of the notification
+ *         type:
+ *           type: string
+ *           description: Type of notification (e.g., "PaymentSuccess", "Reminder")
+ *         isRead:
+ *           type: boolean
+ *           description: Whether the notification has been read
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: When the notification was created
+ *       example:
+ *         _id: "6719d62b4b1f8c123456789a"
+ *         userId: "66f9c8d9d1f2e80b7b5d1234"
+ *         title: "Payment Successful"
+ *         message: "Your booking has been paid successfully!"
+ *         type: "PaymentSuccess"
+ *         isRead: false
+ *         createdAt: "2025-10-24T13:25:00Z"
+ */
+
 
 export default router;

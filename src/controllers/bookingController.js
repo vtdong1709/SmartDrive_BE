@@ -1,4 +1,5 @@
-import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
+import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, getDriverStatsService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
+import { getUserById } from "../services/userService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 // export const createBooking = async (req, res) => {
@@ -263,4 +264,18 @@ export const updateBookingStatus = async (req, res) => {
         .status(error.code || 500)
         .json(errorResponse(error.message, error.code));
     }
+};
+
+//thống kê cho tài xế
+export const getDriverStats = async (req, res) => {
+  try {
+    // Lấy driverId từ token (middleware đã gán req.user)
+    const driverId = req.user._id.toString(); // convert sang string để chắc chắn hợp lệ
+
+    const stats = await getDriverStatsService(driverId);
+    return res.status(200).json(successResponse("Driver stats", stats));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(errorResponse(error.message));
+  }
 };
