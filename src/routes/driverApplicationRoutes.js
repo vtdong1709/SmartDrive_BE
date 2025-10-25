@@ -6,6 +6,7 @@ import {
   upsertDraftApplication,
   updateMyApplication,
   deleteMyApplication,
+  getApplicationByDriverId,
 } from "../controllers/driverController.js";
 import {
   validateDraftApplication,
