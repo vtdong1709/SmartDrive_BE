@@ -8,6 +8,7 @@ import adminRoutes from "./src/routes/adminRoutes.js";
 
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
+import uploadRoutes from "./src/routes/uploadRoutes.js";
 const app = express();
 app.use(express.json());
 
@@ -33,6 +34,11 @@ app.use("/api/driver", driverApplicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/pricing", pricingRoutes);
+<<<<<<< Updated upstream
+=======
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/upload", uploadRoutes);
+>>>>>>> Stashed changes
 
 
 export default app;

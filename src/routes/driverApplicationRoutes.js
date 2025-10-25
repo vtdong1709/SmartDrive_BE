@@ -70,16 +70,16 @@ const router = express.Router();
  *       properties:
  *         idFrontUrl:
  *           type: string
- *           example: "https://files.example.com/id-front.jpg"
+ *           example: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-front.jpg"
  *         idBackUrl:
  *           type: string
- *           example: "https://files.example.com/id-back.jpg"
+ *           example: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-back.jpg"
  *         driverLicenseFrontUrl:
  *           type: string
- *           example: "https://files.example.com/driver-license-front.jpg"
+ *           example: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_driver-license-front.jpg"
  *         driverLicenseBackUrl:
  *           type: string
- *           example: "https://files.example.com/driver-license-back.jpg"
+ *           example: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_driver-license-back.jpg"
  *     DriverApplication:
  *       type: object
  *       properties:
@@ -174,6 +174,9 @@ const router = express.Router();
  * /api/driver/applications:
  *   post:
  *     summary: Tạo hoặc cập nhật hồ sơ nháp
+ *     description: |
+ *       **LƯU Ý:** Trước khi tạo hồ sơ, cần upload file giấy tờ qua POST /api/upload/documents
+ *       để lấy document URLs. Không thể tạo hồ sơ mà không có document URLs.
  *     tags: [Driver Application]
  *     security:
  *       - bearerAuth: []
@@ -199,10 +202,10 @@ const router = express.Router();
  *                   specificAddress: "123 Đường Nguyễn Huệ"
  *                 # vehicle removed
  *                 documents:
-  *                   idFrontUrl: "https://files.example.com/id-front.jpg"
-  *                   idBackUrl: "https://files.example.com/id-back.jpg"
-  *                   driverLicenseFrontUrl: "https://files.example.com/dl-front.jpg"
-  *                   driverLicenseBackUrl: "https://files.example.com/dl-back.jpg"
+  *                   idFrontUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-front.jpg"
+  *                   idBackUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-back.jpg"
+  *                   driverLicenseFrontUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_dl-front.jpg"
+  *                   driverLicenseBackUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_dl-back.jpg"
  *                 licenseNumber: "B2-123456789"
  *                 licenseExpiry: "2028-12-31"
  *                 yearsExperience: 3
@@ -223,10 +226,10 @@ const router = express.Router();
  *                   specificAddress: "123 Đường Nguyễn Huệ"
  *                 # vehicle removed
  *                 documents:
-  *                   idFrontUrl: "https://files.example.com/id-front.jpg"
-  *                   idBackUrl: "https://files.example.com/id-back.jpg"
-  *                   driverLicenseFrontUrl: "https://files.example.com/dl-front.jpg"
-  *                   driverLicenseBackUrl: "https://files.example.com/dl-back.jpg"
+  *                   idFrontUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-front.jpg"
+  *                   idBackUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_id-back.jpg"
+  *                   driverLicenseFrontUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_dl-front.jpg"
+  *                   driverLicenseBackUrl: "https://res.cloudinary.com/your_cloud/driver_documents/driver_doc_1234567890_dl-back.jpg"
  *                 licenseNumber: "B2-123456789"
  *                 licenseExpiry: "2028-12-31"
  *                 yearsExperience: 5
@@ -261,6 +264,116 @@ router.post("/applications", authenticate, validateDraftApplication, upsertDraft
 
 /**
  * @swagger
+<<<<<<< Updated upstream
+=======
+ * /api/upload/documents:
+ *   post:
+ *     summary: Upload giấy tờ tài xế (sử dụng trước khi tạo/cập nhật hồ sơ)
+ *     tags: [Driver Application]
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       **QUAN TRỌNG:** Upload các file giấy tờ lên Cloudinary trước khi tạo hoặc cập nhật hồ sơ.
+ *       
+ *       **Quy trình hoàn chỉnh:**
+ *       1. **Upload file:** Gọi POST /api/upload/documents với file giấy tờ
+ *       2. **Nhận URLs:** Lấy các URL từ response (idFrontUrl, idBackUrl, driverLicenseFrontUrl, driverLicenseBackUrl)
+ *       3. **Tạo hồ sơ:** Gọi POST /api/driver/applications với document URLs trong field `documents`
+ *       4. **Gửi duyệt:** Gọi POST /api/driver/applications/:id/submit
+ *       
+ *       **Lưu ý:** Không thể tạo hồ sơ mà không có document URLs từ bước upload.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               idFront:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Mặt trước CCCD/CMND"
+ *               idBack:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Mặt sau CCCD/CMND"
+ *               driverLicenseFront:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Mặt trước bằng lái xe"
+ *               driverLicenseBack:
+ *                 type: string
+ *                 format: binary
+ *                 description: "Mặt sau bằng lái xe"
+ *     responses:
+ *       200:
+ *         description: Upload thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Upload thành công"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     idFrontUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/your_cloud/driver_documents/id_front.jpg"
+ *                     idBackUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/your_cloud/driver_documents/id_back.jpg"
+ *                     driverLicenseFrontUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/your_cloud/driver_documents/dl_front.jpg"
+ *                     driverLicenseBackUrl:
+ *                       type: string
+ *                       example: "https://res.cloudinary.com/your_cloud/driver_documents/dl_back.jpg"
+ *       400:
+ *         description: Lỗi validate file
+ *       401:
+ *         description: Chưa đăng nhập
+ *       500:
+ *         description: Lỗi server hoặc Cloudinary
+ */
+
+/**
+ * @swagger
+ * /api/driver/applications/{id}:
+ *   get:
+ *     summary: Lấy hồ sơ theo id của tài xế
+ *     tags: [Driver Application]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lấy hồ sơ thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/ApiResponse'
+ *                 - type: object
+ *                   properties:
+ *                     data:
+ *                       $ref: '#/components/schemas/DriverApplication'
+ */
+router.get("/applications/:id", authenticate, validateApplicationId, getApplicationByDriverId);
+
+/**
+ * @swagger
+>>>>>>> Stashed changes
  * /api/driver/applications/me:
  *   get:
  *     summary: Lấy tất cả hồ sơ của tôi
