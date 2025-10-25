@@ -265,8 +265,6 @@ router.post("/applications", authenticate, validateDraftApplication, upsertDraft
 
 /**
  * @swagger
-<<<<<<< Updated upstream
-=======
  * /api/upload/documents:
  *   post:
  *     summary: Upload giấy tờ tài xế (sử dụng trước khi tạo/cập nhật hồ sơ)
@@ -374,7 +372,6 @@ router.get("/applications/:id", authenticate, validateApplicationId, getApplicat
 
 /**
  * @swagger
->>>>>>> Stashed changes
  * /api/driver/applications/me:
  *   get:
  *     summary: Lấy tất cả hồ sơ của tôi
