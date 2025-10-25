@@ -4,6 +4,7 @@ import { getUserById } from "../services/userService.js";
 import redis from "../redis.js";
 import { sendNotification } from "../services/notificationService.js";
 import Booking from "../models/Booking.js";
+import {formatCurrency} from "../utils/formatCurrency.js";
 
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
@@ -261,6 +262,18 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
           avatar: customerInfo.avatar,
         },
       });
+      if (firstDriver.driverId) {
+        await sendNotification(io, {
+          userId: firstDriver.driverId || null,
+          title: `Bạn có cuốc xe mới`,
+          message: `Thông tin chuyến đi:- Loại dịch vụ: ${serviceType}
+          - Điểm đón: ${JSON.stringify(pickupLocation?.address)}
+          - Điểm đến: ${JSON.stringify(dropoffLocation?.address)}
+          - Giá: ${formatCurrency(finalFare)}`,
+          type: "booking",
+          meta: {requestId},
+        });
+      }
 
       // Set timeout (15s) nếu tài xế không phản hồi
       const timerId = setTimeout(() => {
@@ -372,15 +385,15 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
                 // sendMail: false
               });
             // }
-            if (booking.driverId?._id) {
-              await sendNotification(io, {
-                userId: booking.driverId?._id?.toString() || null,
-                title: `Cập nhật chuyến ${bookingId}`,
-                message: `Trạng thái chuyến đi: ${status}`,
-                type: "booking",
-                meta: { bookingId, status },
-              });
-            }
+            // if (booking.driverId?._id) {
+            //   await sendNotification(io, {
+            //     userId: booking.driverId?._id?.toString() || null,
+            //     title: `Cập nhật chuyến ${bookingId}`,
+            //     message: `Trạng thái chuyến đi: ${status}`,
+            //     type: "booking",
+            //     meta: { bookingId, status },
+            //   });
+            // }
     
         } catch (error) {
             console.error("Error updating booking status:", error);
