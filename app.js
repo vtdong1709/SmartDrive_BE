@@ -5,7 +5,7 @@ import userRoutes from "./src/routes/userRoutes.js";
 import driverRoutes from "./src/routes/driverRoutes.js";
 import driverApplicationRoutes from "./src/routes/driverApplicationRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
-
+import notificationRoutes from "./src/routes/notificationRoutes.js";
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
 const app = express();
@@ -33,6 +33,7 @@ app.use("/api/driver", driverApplicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/pricing", pricingRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 
 export default app;

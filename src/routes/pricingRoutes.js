@@ -17,82 +17,6 @@ const router = express.Router();
  */
     
 
-// /**
-//  * @swagger
-//  * /api/pricing/create:
-//  *   post:
-//  *     summary: Tạo bảng giá
-//  *     tags: [Pricing]
-//  *     security:
-//  *       - bearerAuth: []
-//  *     requestBody:
-//  *       required: true
-//  *       content:
-//  *         application/json:
-//  *           schema:
-//  *             type: object
-//  *             required:
-//  *               - serviceType
-//  *               - baseFare
-//  *               - perKm
-//  *             properties:
-//  *               serviceType:
-//  *                 type: string
-//  *                 enum: [hourly, daily, airport_transfer]
-//  *               baseFare:
-//  *                 type: number
-//  *               perKm:
-//  *                 type: number
-//  *               perHour:
-//  *                 type: number
-//  *               perDay:
-//  *                 type: number
-//  *               waitingFeePerMin:
-//  *                 type: number
-//  *               multipliers:
-//  *                 type: object
-//  *                 properties:
-//  *                   night:
-//  *                     type: number
-//  *                   weekend:
-//  *                     type: number
-//  *                   holiday:
-//  *                     type: number
-//  *               effectiveFrom:
-//  *                 type: string
-//  *                 format: date-time
-//  *               effectiveTo:
-//  *                 type: string
-//  *                 format: date-time
-//  *     responses:
-//  *       200:
-//  *         description: Pricing created successfully
-//  *         content:
-//  *           application/json:
-//  *             schema:
-//  *               type: object
-//  *               properties:
-//  *                 success:
-//  *                   type: boolean
-//  *                   example: true
-//  *                 message:
-//  *                   type: string
-//  *                   example: "Pricing created successfully"
-//  *                 data:
-//  *                   $ref: '#/components/schemas/Pricing'
-//  *       404:
-//  *         description: Pricing not found
-//  *       400:
-//  *         description: Bad request
-//  *       500:
-//  *         description: Internal server error
-//  *       401:
-//  *         description: Unauthorized
-//  *       403:
-//  *         description: Forbidden
-//  */
-// router.post("/create",authenticate, authorizeRoles("admin"), createPricing);       // Tạo bảng giá
-
 /**
  * @swagger
  * /api/pricing/create:
@@ -115,7 +39,6 @@ const router = express.Router();
  *                 enum: [per_km, hourly, daily, intercity]
  *               baseFare:
  *                 type: number
- *                 example: 50000
  *               fareBrackets:
  *                 type: array
  *                 items:
@@ -149,67 +72,98 @@ const router = express.Router();
  *                       type: number
  *                     pricePerDay:
  *                       type: number
- *               turnBackFees:
- *                 type: array
- *                 items:
- *                   type: object
- *                   properties:
- *                     fromKm:
- *                       type: number
- *                     toKm:
- *                       type: number
- *                     fee:
- *                       type: number
- *               waitingFeePerMin:
- *                 type: number
- *                 example: 2000
  *               multipliers:
  *                 type: object
  *                 properties:
- *                   after21h:
- *                     type: number
- *                     example: 1.08
- *                   after23h:
- *                     type: number
- *                     example: 1.12
- *                   weekend:
- *                     type: number
- *                     example: 1.10
- *                   holiday:
- *                     type: number
- *                     example: 1.15
- *               maxKmPerHour:
+ *                   after21h: { type: number, example: 1.08 }
+ *                   after23h: { type: number, example: 1.12 }
+ *                   weekend: { type: number, example: 1.10 }
+ *                   holiday: { type: number, example: 1.15 }
+ *               waitingFeePerMin:
  *                 type: number
- *                 example: 25
- *               maxKmPerDay:
- *                 type: number
- *                 example: 100
- *               surchargePerKm:
- *                 type: number
- *                 example: 5000
  *               platformFee:
  *                 type: number
- *                 example: 30000
  *               effectiveFrom:
  *                 type: string
  *                 format: date-time
  *               effectiveTo:
  *                 type: string
  *                 format: date-time
- *           example:
- *             serviceType: "per_km"
- *             baseFare: 50000
- *             fareBrackets:
- *               - { from: 0, to: 10, pricePerKm: 13000 }
- *               - { from: 11, to: 20, pricePerKm: 10000 }
- *               - { from: 21, to: null, pricePerKm: 8000 }
- *             multipliers:
- *               after21h: 1.08
- *               after23h: 1.12
- *               weekend: 1.10
- *               holiday: 1.15
- *             waitingFeePerMin: 2000
- *             platformFee: 30000
+ *           examples:
+ *             per_km:
+ *               summary: Tính giá theo km
+ *               value:
+ *                 serviceType: "per_km"
+ *                 baseFare: 50000
+ *                 fareBrackets:
+ *                   - { from: 0, to: 10, pricePerKm: 13000 }
+ *                   - { from: 11, to: 20, pricePerKm: 10000 }
+ *                   - { from: 21, to: null, pricePerKm: 8000 }
+ *                 multipliers:
+ *                   after21h: 1.08
+ *                   after23h: 1.12
+ *                   weekend: 1.10
+ *                   holiday: 1.15
+ *                 waitingFeePerMin: 2000
+ *                 platformFee: 30000
+ *                 effectiveFrom: "2025-01-01T00:00:00Z"
+ *                 effectiveTo: "2025-12-31T23:59:59Z"
+ *
+ *             hourly:
+ *               summary: Tính giá theo giờ (4 tiếng và 8 tiếng tối đa)
+ *               value:
+ *                 serviceType: "hourly"
+ *                 baseFare: 100000
+ *                 hourBrackets:
+ *                   - { fromHour: 1, toHour: 4, pricePerHour: 50000 }
+ *                   - { fromHour: 5, toHour: 8, pricePerHour: 40000 }
+ *                 multipliers:
+ *                   after21h: 1.08
+ *                   after23h: 1.12
+ *                   weekend: 1.10
+ *                   holiday: 1.15
+ *                 waitingFeePerMin: 2000
+ *                 platformFee: 30000
+ *                 effectiveFrom: "2025-01-01T00:00:00Z"
+ *                 effectiveTo: "2025-12-31T23:59:59Z"
+ *
+ *             daily:
+ *               summary: Tính giá theo ngày (1–3 ngày)
+ *               value:
+ *                 serviceType: "daily"
+ *                 baseFare: 300000
+ *                 dayBrackets:
+ *                   - { fromDay: 1, toDay: 1, pricePerDay: 300000 }
+ *                   - { fromDay: 2, toDay: 2, pricePerDay: 270000 }
+ *                   - { fromDay: 3, toDay: 3, pricePerDay: 250000 }
+ *                 multipliers:
+ *                   after21h: 1.08
+ *                   after23h: 1.12
+ *                   weekend: 1.10
+ *                   holiday: 1.15
+ *                 waitingFeePerMin: 2000
+ *                 platformFee: 30000
+ *                 effectiveFrom: "2025-01-01T00:00:00Z"
+ *                 effectiveTo: "2025-12-31T23:59:59Z"
+ *
+ *             intercity:
+ *               summary: Tính giá liên tỉnh (70km đầu, 71–100km, >100km)
+ *               value:
+ *                 serviceType: "intercity"
+ *                 baseFare: 150000
+ *                 fareBrackets:
+ *                   - { from: 0, to: 70, pricePerKm: 10000 }
+ *                   - { from: 71, to: 100, pricePerKm: 9000 }
+ *                   - { from: 101, to: null, pricePerKm: 8000 }
+ *                 multipliers:
+ *                   after21h: 1.08
+ *                   after23h: 1.12
+ *                   weekend: 1.10
+ *                   holiday: 1.15
+ *                 waitingFeePerMin: 2000
+ *                 platformFee: 30000
+ *                 effectiveFrom: "2025-01-01T00:00:00Z"
+ *                 effectiveTo: "2025-12-31T23:59:59Z"
  *     responses:
  *       200:
  *         description: Pricing created successfully
@@ -233,8 +187,8 @@ const router = express.Router();
  *       500:
  *         description: Internal server error
  */
-router.post("/create", authenticate, authorizeRoles("admin"), createPricing);
 
+router.post("/create", authenticate, authorizeRoles("admin"), createPricing);
 
 /**
  * @swagger

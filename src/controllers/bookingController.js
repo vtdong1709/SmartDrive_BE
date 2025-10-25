@@ -1,37 +1,158 @@
-import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, updateBookingService } from "../services/bookingService.js";
+import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, getDriverStatsService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
+import { getUserById } from "../services/userService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
+
+// export const createBooking = async (req, res) => {
+//     try {
+//         const { driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = req.body;
+//         const customerId = req.user.id;
+//         const bookingData = {
+//             customerId,
+//             driverId,
+//             startTime,
+//             endTime,
+//             pickupLocation,
+//             dropoffLocation,
+//             distance,
+//             duration,
+//             price,
+//             createdAt: new Date(),
+//         };
+//         console.log(bookingData);
+//         const booking = await createBookingService(bookingData);
+//         res.status(200).json(successResponse("Đặt tài xế thành công", booking));
+//     } catch (error) {
+//         res
+//         .status(error.code || 500)
+//         .json(errorResponse(error.message, error.code));
+//     }
+// };
 
 export const createBooking = async (req, res) => {
     try {
-        const { driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = req.body;
-        const customerId = req.user.id;
-        const bookingData = {
-            customerId,
-            driverId,
-            startTime,
-            endTime,
-            pickupLocation,
-            dropoffLocation,
-            distance,
-            duration,
-            price,
-            createdAt: new Date(),
-        };
-        console.log(bookingData);
-        const booking = await createBookingService(bookingData);
-        res.status(200).json(successResponse("Đặt tài xế thành công", booking));
+      const {
+        driverId,
+        serviceType, // per_km | hourly | daily | intercity
+        startTime,
+        endTime,
+        pickupLocation,
+        dropoffLocation,
+        price,
+        distance,
+        duration,
+        paymentMethod,
+        paymentStatus,
+      } = req.body;
+  
+      const customerId = req.user.id;
+  
+      // --- Kiểm tra bắt buộc chung ---
+      if (!driverId || !serviceType || !startTime || !pickupLocation) {
+        return res.status(400).json(
+          errorResponse(
+            "Thiếu thông tin bắt buộc: driverId, serviceType, startTime, pickupLocation.",
+            400
+          )
+        );
+      }
+  
+      // --- Kiểm tra điều kiện riêng theo loại đặt xe ---
+      switch (serviceType) {
+        case "per_km":
+        case "intercity":
+          // => Cần điểm đến, không bắt buộc endTime
+          if (!dropoffLocation) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập điểm đến (dropoffLocation).", 400));
+          }
+          break;
+  
+        case "hourly":
+          // => Cần endTime và thời gian hợp lệ (4h hoặc 8h)
+          if (!endTime) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập thời gian kết thúc (endTime).", 400));
+          }
+  
+          const hourlyDuration =
+            new Date(endTime).getTime() - new Date(startTime).getTime();
+  
+          const hours = hourlyDuration / (1000 * 60 * 60);
+  
+          if (hours !== 4 && hours !== 8) {
+            return res.status(400).json(
+              errorResponse(
+                "Thời gian thuê theo giờ chỉ cho phép 4 tiếng hoặc 8 tiếng.",
+                400
+              )
+            );
+          }
+          break;
+  
+        case "daily":
+          // => Cần endTime và thời gian từ 1 đến 3 ngày
+          if (!endTime) {
+            return res
+              .status(400)
+              .json(errorResponse("Vui lòng nhập thời gian kết thúc (endTime).", 400));
+          }
+  
+          const dailyDuration =
+            new Date(endTime).getTime() - new Date(startTime).getTime();
+  
+          const days = dailyDuration / (1000 * 60 * 60 * 24);
+  
+          if (days < 1 || days > 3) {
+            return res.status(400).json(
+              errorResponse(
+                "Thời gian thuê theo ngày chỉ được phép từ 1 đến 3 ngày.",
+                400
+              )
+            );
+          }
+          break;
+  
+        default:
+          return res
+            .status(400)
+            .json(errorResponse("Loại đặt xe (serviceType) không hợp lệ.", 400));
+      }
+  
+      const bookingData = {
+        customerId,
+        driverId,
+        serviceType,
+        startTime,
+        endTime: endTime || null,
+        pickupLocation,
+        dropoffLocation: dropoffLocation || null,
+        distance: distance || null,
+        duration: duration || null,
+        price,
+        paymentMethod,
+        paymentStatus,
+        createdAt: new Date(),
+      };
+  
+      console.log("Booking data:", bookingData);
+  
+      const booking = await createBookingService(bookingData);
+      res.status(200).json(successResponse("Đặt tài xế thành công", booking));
     } catch (error) {
-        res
+      res
         .status(error.code || 500)
-        .json(errorResponse(error.message, error.code));
+        .json(errorResponse(error.message, error.code || 500));
     }
-};
+  };
+  
 
 export const getBookingById = async (req, res) => {
   try {
     const { id } = req.params;
     const booking = await getBookingByIdService(id);
-  res.status(201).json(successResponse("Booking fetched successfully", booking));
+  res.status(200).json(successResponse("Booking fetched successfully", booking));
 } catch (error) {
   res
   .status(error.code || 500)
@@ -66,8 +187,9 @@ export const deleteBooking = async (req, res) => {
 
 export const getAllBookings = async (req, res) => {
     try {
-        const bookings = await getAllBookingsService();
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getAllBookingsService(page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)
@@ -78,8 +200,9 @@ export const getAllBookings = async (req, res) => {
 export const getBookingsByUserId = async (req, res) => {
     try {
         const { userId } = req.params;
-        const bookings = await getBookingsByUserIdService(userId);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByUserIdService(userId, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)
@@ -90,8 +213,9 @@ export const getBookingsByUserId = async (req, res) => {
 export const getBookingsByDriverId = async (req, res) => {
     try {
         const { driverId } = req.params;
-        const bookings = await getBookingsByDriverIdService(driverId);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByDriverIdService(driverId, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
   } catch (error) {
     res
     .status(error.code || 500)
@@ -102,8 +226,9 @@ export const getBookingsByDriverId = async (req, res) => {
 export const getBookingsByStatus = async (req, res) => {
     try {
         const { status } = req.params;
-        const bookings = await getBookingsByStatusService(status);
-        res.status(200).json(successResponse("Bookings fetched successfully", bookings));
+        const { page = 1, limit = 10 } = req.query;
+        const result = await getBookingsByStatusService(status, page, limit);
+        res.status(200).json(successResponse("Bookings fetched successfully", { data: result.bookings, pagination: result.pagination }));
     } catch (error) {
         res
         .status(error.code || 500)
@@ -113,11 +238,12 @@ export const getBookingsByStatus = async (req, res) => {
 
 export const calculateFare = async (req, res) => {
     try {
-      const { pickupLocation, dropoffLocation, startTime, serviceType } = req.body;
+      const { pickupLocation, dropoffLocation, startTime, endTime, serviceType } = req.body;
       const result = await calculateFareService(
         pickupLocation,
         dropoffLocation,
         startTime,
+        endTime,
         serviceType
       );
   
@@ -127,15 +253,29 @@ export const calculateFare = async (req, res) => {
     }
   };
 
-// export const calculateFare = async (req, res) => {
-//     try {
-//         const { pickupLocation, dropoffLocation, startTime } = req.body;
-//         const fare = await calculateFareService(pickupLocation, dropoffLocation, startTime);
-//         res.status(200).json(successResponse("Ước tính giá tiền thành công", fare));
-//     } catch (error) {
-//         res
-//         .status(error.code || 500)
-//         .json(errorResponse(error.message, error.code));
-//     }
-// }
+export const updateBookingStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const booking = await updateBookingStatusService(id, status);
+        res.status(200).json(successResponse("Booking status updated successfully", booking));
+    } catch (error) {
+        res
+        .status(error.code || 500)
+        .json(errorResponse(error.message, error.code));
+    }
+};
 
+//thống kê cho tài xế
+export const getDriverStats = async (req, res) => {
+  try {
+    // Lấy driverId từ token (middleware đã gán req.user)
+    const driverId = req.user._id.toString(); // convert sang string để chắc chắn hợp lệ
+
+    const stats = await getDriverStatsService(driverId);
+    return res.status(200).json(successResponse("Driver stats", stats));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json(errorResponse(error.message));
+  }
+};
