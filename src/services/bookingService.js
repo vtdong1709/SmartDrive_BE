@@ -1,4 +1,5 @@
 import axios from "axios";
+import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import { errorResponse } from "../utils/apiResponse.js";
 import Pricing from "../models/Pricing.js";
@@ -7,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
 
 export const createBookingService = async (bookingData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration} = bookingData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType} = bookingData;
   const newBookingData  = {
     customerId,
     driverId,
@@ -19,6 +20,9 @@ export const createBookingService = async (bookingData) => {
     duration,
     status: "Pending",
     price,
+    serviceType,
+    paymentMethod: "cash",
+    paymentStatus: "Pending",
     createdAt: new Date(),
   };
   console.log(newBookingData);
@@ -29,7 +33,7 @@ export const createBookingService = async (bookingData) => {
 
 
 export const updateBookingService = async (id, updateData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp } = updateData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, status, timestamp, serviceType, paymentMethod, paymentStatus } = updateData;
   const allowedUpdates = {
     customerId,
     driverId,
@@ -41,6 +45,9 @@ export const updateBookingService = async (id, updateData) => {
     duration,
     status,
     price,
+    serviceType,
+    paymentMethod,
+    paymentStatus,
     updatedAt: timestamp || new Date(),
   };
   Object.keys(allowedUpdates).forEach(
@@ -76,156 +83,112 @@ export const deleteBookingService = async (id) => {
   return booking;
 };
 
-export const getAllBookingsService = async () => {
-  const bookings = await Booking.find().populate("customerId").populate("driverId");
-  return bookings;
+export const getAllBookingsService = async (page = 1, limit = 10) => {
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find().populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments();
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
-export const getBookingByIdService = async (id) => {
-  if (!id) {
-    throw new errorResponse("Không tìm thấy booking", 404);
-  }
-    const booking = await Booking.findById(id).populate("customerId").populate("driverId");
-    return booking;
-  };
+  export const getBookingByIdService = async (id) => {
+    if (!id) {
+      throw new errorResponse("Không tìm thấy booking", 404);
+    }
+      const booking = await Booking.findById(id)
+      .populate({ path: "customerId", model: "users" })
+      .populate({ path: "driverId", model: "users" });
+      return booking;
+    };
 
-export const getBookingsByUserIdService = async (userId) => {
+export const getBookingsByUserIdService = async (userId, page = 1, limit = 10) => {
   if (!userId) {
     throw new errorResponse("Không tìm thấy người dùng", 404);
   }
-  const bookings = await Booking.find({ customerId: userId }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ customerId: userId }).populate("customerId").populate("driverId") .sort({ createdAt: -1 }) // lấy mới nhất trước
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ customerId: userId });
+
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
-export const getBookingsByDriverIdService = async (driverId) => {
+export const getBookingsByDriverIdService = async (driverId, page = 1, limit = 10) => {
   if (!driverId) {
     throw new errorResponse("Không tìm thấy tài xế", 404);
   }
-  const bookings = await Booking.find({ driverId: driverId }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ driverId: driverId }).populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ driverId: driverId });
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
 
-export const getBookingsByStatusService = async (status) => {
+export const getBookingsByStatusService = async (status, page = 1, limit = 10) => {
   if (!status) {
     throw new errorResponse("Không tìm thấy trạng thái", 404);
   }
-  const bookings = await Booking.find({ status: status }).populate("customerId").populate("driverId");
-  return bookings;
+  page = parseInt(page);
+  limit = parseInt(limit);
+  const skip = (page - 1) * limit;
+  const bookings = await Booking.find({ status: status }).populate("customerId").populate("driverId") .sort({ createdAt: -1 })
+  .skip(skip)
+  .limit(limit);
+  const totalBookings = await Booking.countDocuments({ status: status });
+  return {
+    bookings,
+    pagination: {
+      total: totalBookings,
+      page,
+      limit,
+      totalPages: Math.ceil(totalBookings / limit),
+    },
+  };
 };
-
-
-// export const calculateFareService = async (pickupLocation, dropoffLocation, startTime) => {
-//   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-//   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(
-//       pickupLocation
-//     )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
-//     const response = await axios.get(url);
-//     if (response.data.rows[0].elements[0].status !== "OK") {
-//       throw new errorResponse("Không tính được khoảng cách từ Google Maps", 400);
-//     }
-//     const distanceMeters = response.data.rows[0].elements[0].distance.value;
-//     const distanceKm = distanceMeters / 1000;
-//     const hour = new Date(startTime).getHours();
-// let pricePerKm;
-
-// if (hour >= 9 && hour < 16) {
-//   pricePerKm = 15000;
-// } else if (hour >= 16 && hour < 21) {
-//   pricePerKm = 20000;
-// } else if (hour >= 22 || hour < 6) {
-//   pricePerKm = 30000;
-// } else if (hour >= 7 && hour < 9) {
-//   pricePerKm = 12000;
-// } else {
-//   pricePerKm = 15000; // mặc định
-// }
-
-// const totalPrice = distanceKm * pricePerKm;
-
-// return {
-//   pickupLocation,
-//   dropoffLocation,
-//   distanceKm,
-//   pricePerKm,
-//   totalPrice,
-// };
-// };
-
-
-// export const calculateFareService = async (origin, destination, startTime) => {
-//   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-//   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
-//     origin
-//   )}&destinations=${encodeURIComponent(destination)}&key=${apiKey}`;
-
-//   const response = await axios.get(url);
-//   console.log("Google API response:", response.data);
-
-//   if (response.data.status !== "OK") {
-//     throw new Error(response.data.error_message || "Lỗi từ Google Maps API");
-//   }
-
-//   const element = response.data.rows?.[0]?.elements?.[0];
-//   if (!element || element.status !== "OK") {
-//     throw new Error("Không tìm thấy lộ trình cho địa chỉ đã nhập");
-//   }
-
-//   const distanceValue = element.distance.value; // mét
-//   const distanceText = element.distance.text;
-//   const durationText = element.duration.text;
-
-//   const hour = new Date(startTime).getHours();
-//   let ratePerKm = 15000;
-//   if (hour >= 16 && hour < 21) ratePerKm = 20000;
-//   else if (hour >= 22 || hour < 6) ratePerKm = 30000;
-//   else if (hour >= 7 && hour < 9) ratePerKm = 12000;
-
-//   const distanceKm = distanceValue / 1000;
-//   const fare = Math.round(distanceKm * ratePerKm);
-
-//   return {
-//     pickupLocation: origin,
-//     dropoffLocation: destination,
-//     distance: distanceText,
-//     duration: durationText,
-//     ratePerKm,
-//     fare,
-//   };
-// };
 
 export const calculateFareService = async (
   pickupLocation,
   dropoffLocation,
   startTime,
+  endTime,       
   serviceType,
 ) => {
   if (!serviceType) throw new Error("Vui lòng chọn loại dịch vụ trước khi tính giá");
 
-  // === Lấy dữ liệu từ Google Maps API ===
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
-    pickupLocation
-  )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
-
-  const response = await axios.get(url);
-  if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
-
-  const element = response.data.rows?.[0]?.elements?.[0];
-  if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
-
-  const distanceValue = element.distance.value; // mét
-  const durationValue = element.duration.value; // giây
-  const distanceKm = distanceValue / 1000;
-
-  // Thêm phần tính thời gian dự kiến (định dạng đọc được)
-  const hours = Math.floor(durationValue / 3600);
-  const minutes = Math.floor((durationValue % 3600) / 60);
-  const seconds = durationValue % 60;
-  const estimatedDuration =
-    (hours > 0 ? `${hours} giờ ` : "") +
-    (minutes > 0 ? `${minutes} phút ` : "") +
-    (seconds > 0 ? `${seconds} giây` : "");
-
+  // === Lấy thời gian bắt đầu ===
   const currentTime = new Date(startTime);
   const hour = currentTime.getHours();
   const dayOfWeek = currentTime.getDay();
@@ -272,75 +235,117 @@ export const calculateFareService = async (
   );
   if (isHoliday) multiplier *= multipliers.holiday || 1;
 
-  // === Tính giá cơ bản ===
+  // === Khởi tạo các giá trị trả về ===
   let fare = baseFare;
-  const durationHours = durationValue / 3600;
-  const durationDays = Math.ceil(durationValue / (3600 * 24));
+  let distanceKm = 0;
+  let durationValue = 0;
+  let estimatedDuration = "";
   let extraKmCharge = 0;
   let turnBackFee = 0;
 
+  // === Tính theo loại dịch vụ ===
   switch (serviceType) {
-    case "per_km": {
-      const bracket =
-        fareBrackets.find(
-          (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
-        ) || fareBrackets.at(-1);
-      fare += distanceKm * bracket.pricePerKm;
+    case "per_km":
+    case "intercity": {
+      if (!pickupLocation || !dropoffLocation) 
+        throw new Error("Vui lòng nhập đầy đủ điểm đi và điểm đến");
+
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
+        pickupLocation
+      )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
+
+      const response = await axios.get(url);
+      if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
+
+      const element = response.data.rows?.[0]?.elements?.[0];
+      if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
+
+      const distanceValue = element.distance.value;
+      durationValue = element.duration.value;
+      distanceKm = distanceValue / 1000;
+
+      const hours = Math.floor(durationValue / 3600);
+      const minutes = Math.floor((durationValue % 3600) / 60);
+      const seconds = durationValue % 60;
+      estimatedDuration =
+        (hours > 0 ? `${hours} giờ ` : "") +
+        (minutes > 0 ? `${minutes} phút ` : "") +
+        (seconds > 0 ? `${seconds} giây` : "");
+
+      if (serviceType === "per_km") {
+        const bracket =
+          fareBrackets.find(
+            (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
+          ) || fareBrackets.at(-1);
+        fare += distanceKm * bracket.pricePerKm;
+      } else {
+        // intercity
+        let intercityFare = 0;
+        if (distanceKm <= 70) {
+          intercityFare = distanceKm * fareBrackets[0].pricePerKm;
+        } else if (distanceKm <= 100) {
+          intercityFare =
+            70 * fareBrackets[0].pricePerKm +
+            (distanceKm - 70) * fareBrackets[1].pricePerKm;
+        } else {
+          intercityFare =
+            70 * fareBrackets[0].pricePerKm +
+            30 * fareBrackets[1].pricePerKm +
+            (distanceKm - 100) * fareBrackets[2].pricePerKm;
+        }
+        fare += intercityFare;
+
+        const turnFee =
+          turnBackFees.find(
+            (f) => distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
+          ) || null;
+
+        if (turnFee) {
+          turnBackFee = turnFee.fee;
+          fare += turnBackFee;
+        }
+      }
       break;
     }
 
     case "hourly": {
+      if (!startTime || !endTime) throw new Error("Dịch vụ theo giờ cần startTime và endTime");
+
+      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+      if (durationMs <= 0) throw new Error("endTime phải lớn hơn startTime");
+
+      const durationHours = durationMs / (1000 * 60 * 60);
+      if (durationHours > 8) throw new Error("Dịch vụ theo giờ tối đa 8 tiếng mỗi ngày");
+
       const bracket =
         hourBrackets.find(
           (b) =>
             durationHours >= b.fromHour &&
             (b.toHour === null || durationHours <= b.toHour)
         ) || hourBrackets.at(-1);
-      fare += durationHours * bracket.pricePerHour;
 
-      // Phụ phí vượt km nếu có
-      if (distanceKm > maxKmPerHour * durationHours) {
-        const exceededKm = distanceKm - maxKmPerHour * durationHours;
-        extraKmCharge = exceededKm * surchargePerKm;
-        fare += extraKmCharge;
-      }
+      fare += durationHours * bracket.pricePerHour;
       break;
     }
 
     case "daily": {
+      if (!startTime || !endTime) throw new Error("Dịch vụ theo ngày cần startTime và endTime");
+
+      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+      const durationHours = durationMs / (1000 * 60 * 60);
+      const durationDays = Math.ceil(durationHours / 24);
+
+      if (durationDays > 3) throw new Error("Dịch vụ theo ngày tối đa 3 ngày");
+
       const bracket =
         dayBrackets.find(
           (b) =>
             durationDays >= b.fromDay &&
             (b.toDay === null || durationDays <= b.toDay)
         ) || dayBrackets.at(-1);
+
       fare += durationDays * bracket.pricePerDay;
-
-      // Phụ phí vượt km nếu có
-      if (distanceKm > maxKmPerDay * durationDays) {
-        const exceededKm = distanceKm - maxKmPerDay * durationDays;
-        extraKmCharge = exceededKm * surchargePerKm;
-        fare += extraKmCharge;
-      }
-      break;
-    }
-
-    case "intercity": {
-      const bracket =
-        fareBrackets.find(
-          (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
-        ) || fareBrackets.at(-1);
-      fare += distanceKm * bracket.pricePerKm;
-
-      // Tính phí quay đầu nếu có
-      const turnFee =
-        turnBackFees.find(
-          (f) => distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
-        ) || null;
-      if (turnFee) {
-        turnBackFee = turnFee.fee;
-        fare += turnBackFee;
-      }
       break;
     }
 
@@ -357,15 +362,14 @@ export const calculateFareService = async (
   // === Làm tròn ===
   fare = Math.round(fare);
 
-  // === Trả kết quả ===
   return {
-    pickupLocation: pickupLocation,
-    dropoffLocation: dropoffLocation,
+    pickupLocation,
+    dropoffLocation,
     distanceKm,
-    estimatedDuration, // Thời gian dự kiến (đã format)
-    durationSeconds: durationValue, // Tổng thời gian (giây)
-    durationHours,
-    durationDays,
+    estimatedDuration,
+    durationSeconds: durationValue,
+    durationHours: serviceType === "hourly" ? (new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60) : 0,
+    durationDays: serviceType === "daily" ? Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60*24)) : 0,
     baseFare,
     multiplier,
     extraKmCharge,
@@ -373,8 +377,10 @@ export const calculateFareService = async (
     platformFee,
     finalFare: fare,
     serviceType,
+   
   };
 };
+
 
 export const findDriver = async (req, res) => {
   try {
@@ -431,3 +437,49 @@ export const findDriver = async (req, res) => {
   }
 };
 
+export const updateBookingStatusService = async (bookingId, status) => {
+  const booking = await Booking.findByIdAndUpdate(bookingId, { status }, { new: true });
+  return booking;
+};
+
+
+// thống kê cho tài xế
+export const getDriverStatsService = async (driverId) => {
+  if (!driverId || !mongoose.Types.ObjectId.isValid(driverId)) {
+    throw new Error("Valid driverId is required");
+  }
+
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
+
+  // Lấy tất cả booking hôm nay của tài xế
+  const bookings = await Booking.find({
+    driverId,
+    status: "Completed",
+    startTime: { $gte: startOfDay, $lte: endOfDay },
+  });
+
+  const tripsToday = bookings.length;
+  const incomeToday = bookings.reduce((sum, b) => {
+    const tripIncome = (b.price || 0) * 0.75; // trừ 25%
+    return sum + tripIncome;
+  }, 0);
+  const durationToday = bookings.reduce((sum, b) => {
+    const start = new Date(b.startTime);
+    const end = new Date(b.endTime);
+    return sum + (end - start) / 3600000; // giờ
+  }, 0);
+
+  const ratingSum = bookings.reduce((sum, b) => sum + (b.rating || 0), 0);
+  const ratingAverage = bookings.length > 0 ? (ratingSum / bookings.length).toFixed(1) : 0;
+
+  return {
+    tripsToday,
+    incomeToday,
+    durationToday: durationToday.toFixed(1),
+    ratingAverage: parseFloat(ratingAverage),
+  };
+};

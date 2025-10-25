@@ -5,7 +5,7 @@ import userRoutes from "./src/routes/userRoutes.js";
 import driverRoutes from "./src/routes/driverRoutes.js";
 import driverApplicationRoutes from "./src/routes/driverApplicationRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
-
+import notificationRoutes from "./src/routes/notificationRoutes.js";
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
@@ -34,11 +34,8 @@ app.use("/api/driver", driverApplicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/pricing", pricingRoutes);
-<<<<<<< Updated upstream
-=======
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
->>>>>>> Stashed changes
 
 
 export default app;

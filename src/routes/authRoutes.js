@@ -36,6 +36,7 @@ const router = express.Router();
  *             required:
  *               - fullName
  *               - email
+ *               - phone
  *               - password
  *             properties:
  *               fullName:
@@ -47,6 +48,10 @@ const router = express.Router();
  *                 format: email
  *                 description: Email hợp lệ của người dùng
  *                 example: "nguyenvana@example.com"
+ *               phone:
+ *                 type: string
+ *                 description: Số điện thoại hợp lệ tại Việt Nam (10 chữ số, bắt đầu bằng 0 hoặc +84)
+ *                 example: "0987654321"
  *               password:
  *                 type: string
  *                 minLength: 6
@@ -83,11 +88,14 @@ const router = express.Router();
  *                     email:
  *                       type: string
  *                       example: "nguyenvana@example.com"
+ *                     phone:
+ *                       type: string
+ *                       example: "0987654321"
  *                     role:
  *                       type: string
  *                       example: "renter"
  *       400:
- *         description: Lỗi validate hoặc email đã tồn tại
+ *         description: Lỗi validate hoặc email/phone đã tồn tại
  *         content:
  *           application/json:
  *             schema:
@@ -98,7 +106,7 @@ const router = express.Router();
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Email đã tồn tại"
+ *                   example: "Số điện thoại không hợp lệ"
  *                 code:
  *                   type: integer
  *                   example: 400
@@ -125,7 +133,7 @@ router.post("/register", validateRegister, register);
  * @swagger
  * /api/auth/login:
  *   post:
- *     summary: Đăng nhập hệ thống
+ *     summary: Đăng nhập hệ thống bằng số điện thoại
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -134,18 +142,20 @@ router.post("/register", validateRegister, register);
  *           schema:
  *             type: object
  *             required:
- *               - email
+ *               - phone
  *               - password
  *             properties:
- *               email:
+ *               phone:
  *                 type: string
- *                 example: user@example.com
+ *                 description: Số điện thoại hợp lệ tại Việt Nam (bắt đầu bằng 0 hoặc +84)
+ *                 example: "0987654321"
  *               password:
  *                 type: string
+ *                 description: Mật khẩu của người dùng
  *                 example: "123456"
  *     responses:
  *       200:
- *         description: Đăng nhập thành công, trả về thông tin user + token
+ *         description: Đăng nhập thành công, trả về thông tin user và token
  *         content:
  *           application/json:
  *             schema:
@@ -165,13 +175,16 @@ router.post("/register", validateRegister, register);
  *                       example: "650f1c5d8b9c1a1234abcd56"
  *                     fullName:
  *                       type: string
- *                       example: Nguyễn Văn A
+ *                       example: "Nguyễn Văn A"
+ *                     phone:
+ *                       type: string
+ *                       example: "0987654321"
  *                     email:
  *                       type: string
- *                       example: user@example.com
+ *                       example: "nguyenvana@example.com"
  *                     role:
  *                       type: string
- *                       example: renter
+ *                       example: "renter"
  *                     accessToken:
  *                       type: string
  *                       description: JWT Access Token
@@ -181,7 +194,7 @@ router.post("/register", validateRegister, register);
  *                       description: Refresh Token lưu DB
  *                       example: "def50200acbd12983..."
  *       400:
- *         description: Sai email hoặc mật khẩu / thiếu thông tin
+ *         description: Sai số điện thoại hoặc mật khẩu / thiếu thông tin đăng nhập
  *         content:
  *           application/json:
  *             schema:
@@ -192,12 +205,42 @@ router.post("/register", validateRegister, register);
  *                   example: false
  *                 message:
  *                   type: string
- *                   example: "Sai email hoặc mật khẩu!"
+ *                   example: "Sai số điện thoại hoặc mật khẩu!"
  *                 code:
  *                   type: integer
  *                   example: 400
+ *       403:
+ *         description: Tài khoản chưa được xác thực
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Tài khoản chưa được xác thực email. Vui lòng kiểm tra hộp thư."
+ *                 code:
+ *                   type: integer
+ *                   example: 403
  *       500:
  *         description: Lỗi server
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Có lỗi xảy ra, vui lòng thử lại sau"
+ *                 code:
+ *                   type: integer
+ *                   example: 500
  */
 router.post("/login", login);
 

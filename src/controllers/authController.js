@@ -27,11 +27,12 @@ export const register = async (req, res) => {
           fullName: newUser.fullName,
           email: newUser.email,
           role: newUser.role,
+          phone: newUser.phone,
         }
       )
     );
   } catch (error) {
-    console.log(error.message)
+    console.log(error.message);
     res
       .status(error.statusCode || 500)
       .json(
@@ -47,16 +48,16 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    if (!email || !password) {
+    if (!phone || !password) {
       return res
         .status(400)
         .json(errorResponse("Vui lòng điền đầy đủ thông tin đăng nhập!", 400));
     }
 
     const { user, accessToken, refreshToken } = await loginUser({
-      email,
+      phone,
       password,
     });
 
@@ -65,6 +66,7 @@ export const login = async (req, res) => {
         id: user._id,
         fullName: user.fullName,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         accessToken,
         refreshToken,
