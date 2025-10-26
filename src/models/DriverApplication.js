@@ -2,20 +2,20 @@ import mongoose from "mongoose";
 
 const personalSchema = new mongoose.Schema(
   {
-    fullName: { type: String, required: true, trim: true },
-    phone: { type: String, required: true },
-    email: { type: String, required: true, lowercase: true, trim: true },
-    idNumber: { type: String, required: true }, // CCCD/CMND
+    fullName: { type: String, trim: true },
+    phone: { type: String },
+    email: { type: String, lowercase: true, trim: true },
+    idNumber: { type: String }, // CCCD/CMND
   },
   { _id: false }
 );
 
 const addressSchema = new mongoose.Schema(
   {
-    province: { type: String, required: true, trim: true }, // Tỉnh/Thành phố
-    district: { type: String, required: true, trim: true }, // Quận/Huyện
-    ward: { type: String, required: true, trim: true }, // Phường/Xã
-    specificAddress: { type: String, required: true, trim: true }, // Địa chỉ cụ thể
+    province: { type: String, trim: true }, // Tỉnh/Thành phố
+    district: { type: String, trim: true }, // Quận/Huyện
+    ward: { type: String, trim: true }, // Phường/Xã
+    specificAddress: { type: String, trim: true }, // Địa chỉ cụ thể
   },
   { _id: false }
 );
@@ -42,8 +42,8 @@ const driverApplicationSchema = new mongoose.Schema(
       required: true,
     },
     rejectionReason: { type: String, default: null },
-    personal: { type: personalSchema, required: true },
-    address: { type: addressSchema, required: true },
+    personal: { type: personalSchema },
+    address: { type: addressSchema },
     documents: { type: documentsSchema, default: {} },
     licenseNumber: { type: String, default: null },
     licenseExpiry: { type: Date, default: null },
