@@ -368,8 +368,6 @@ router.post("/applications", authenticate, validateDraftApplication, upsertDraft
  *                     data:
  *                       $ref: '#/components/schemas/DriverApplication'
  */
-router.get("/applications/:id", authenticate, validateApplicationId, getApplicationByDriverId);
-
 /**
  * @swagger
  * /api/driver/applications/me:
@@ -396,6 +394,8 @@ router.get("/applications/:id", authenticate, validateApplicationId, getApplicat
  *         description: Không tìm thấy hồ sơ
  */
 router.get("/applications/me", authenticate, getMyApplication);
+
+router.get("/applications/:id", authenticate, validateApplicationId, getApplicationByDriverId);
 
 /**
  * @swagger
