@@ -29,7 +29,6 @@ const router = express.Router();
  *   schemas:
  *     DriverPersonal:
  *       type: object
- *       required: [fullName, phone, email, idNumber]
  *       properties:
  *         fullName:
  *           type: string
@@ -46,7 +45,6 @@ const router = express.Router();
  *           example: "079123456789"
  *     DriverAddress:
  *       type: object
- *       required: [province, district, ward, specificAddress]
  *       properties:
  *         province:
  *           type: string
@@ -132,7 +130,6 @@ const router = express.Router();
  *           format: date-time
  *     DriverApplicationDraftRequest:
  *       type: object
- *       required: [personal, address, licenseNumber, licenseExpiry, yearsExperience, services]
  *       properties:
   *         applicationId:
   *           type: string
@@ -461,7 +458,7 @@ router.post("/applications/:id/submit", authenticate, validateSubmitApplication,
  *                     data:
  *                       $ref: '#/components/schemas/DriverApplication'
  */
-router.patch("/applications/:id", authenticate, validateApplicationId, updateMyApplication);
+router.patch("/applications/:id", authenticate, validateDraftApplication, updateMyApplication);
 
 /**
  * @swagger
