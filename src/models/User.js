@@ -15,11 +15,11 @@ const addressSchema = new mongoose.Schema({
   }
 }, { _id: false });
 
-const paymentMethodSchema = new mongoose.Schema({
-    provider: { type: String, required: true, enum: ['momo', 'vnpay', 'paypal'] }, // Tên nhà cung cấp
-    customerId: { type: String, required: true }, // ID khách hàng từ nhà cung cấp
-    isDefault: { type: Boolean, default: false }
-}, { _id: false });
+// const paymentMethodSchema = new mongoose.Schema({
+//     provider: { type: String, required: true, enum: ['momo', 'vnpay', 'paypal'] }, // Tên nhà cung cấp
+//     customerId: { type: String, required: true }, // ID khách hàng từ nhà cung cấp
+//     isDefault: { type: Boolean, default: false }
+// }, { _id: false });
 
 
 const userSchema = new mongoose.Schema(
@@ -68,7 +68,7 @@ const userSchema = new mongoose.Schema(
     savedAddresses: [addressSchema],
     
     // Phương thức thanh toán đã liên kết
-    paymentMethods: [paymentMethodSchema],
+    // paymentMethods: [paymentMethodSchema],
 
     // Liên kết tới hồ sơ tài xế (nếu user này là tài xế)
     driverProfileId: {
