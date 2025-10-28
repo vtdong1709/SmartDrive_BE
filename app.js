@@ -10,6 +10,7 @@ import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
 import payOSRoutes from "./src/routes/payOSRoutes.js";
+import driverWalletRoutes from "./src/routes/driverWalletRoutes.js";
 const app = express();
 app.use(express.json());
 
@@ -43,5 +44,6 @@ app.use("/api/pricing", pricingRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/payos", payOSRoutes);
+app.use("/api/driver/wallet", driverWalletRoutes);
 
 export default app;

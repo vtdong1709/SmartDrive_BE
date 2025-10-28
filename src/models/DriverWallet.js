@@ -42,6 +42,16 @@ const DriverWalletSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    bankAccount: {
+      numberBank: {
+        type: String,
+        required: true,
+      },
+      bankName: {
+        type: String,
+        required: true,
+      },
+    },
     lastTopupRequest: {
       orderCode: Number,
       amount: Number,
