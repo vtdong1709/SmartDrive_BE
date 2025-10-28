@@ -6,9 +6,10 @@ import Pricing from "../models/Pricing.js";
 import { onlineDrivers, pendingRequests } from "../sockets/socketHandler.js";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
+import DriverWallet from "../models/DriverWallet.js";
 
 export const createBookingService = async (bookingData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType} = bookingData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType, paymentMethod} = bookingData;
   const newBookingData  = {
     customerId,
     driverId,
@@ -21,12 +22,29 @@ export const createBookingService = async (bookingData) => {
     status: "Pending",
     price,
     serviceType,
-    paymentMethod: "cash",
+    paymentMethod,
     paymentStatus: "Pending",
     createdAt: new Date(),
   };
-  console.log(newBookingData);
   const booking = await Booking.create(newBookingData);
+
+  console.log("Booking created:", booking.bookingCode);
+
+  if (paymentMethod === "toDriver") {
+    const commissionDebt = Math.round(price * 15/100);
+
+    const wallet = await DriverWallet.findOne({ driver: driverId });
+    if (!wallet) {
+      throw new Error("Không tìm thấy ví của tài xế để cộng nợ hoa hồng");
+    }
+
+    wallet.debt += commissionDebt;
+    await wallet.save();
+
+    console.log(
+      `Đã cộng nợ hoa hồng ${commissionDebt}₫ cho tài xế ${driverId}`
+    );
+  }
   return booking;
 };
 

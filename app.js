@@ -9,15 +9,20 @@ import notificationRoutes from "./src/routes/notificationRoutes.js";
 import bookingRoutes from "./src/routes/bookingRoutes.js";
 import pricingRoutes from "./src/routes/pricingRoutes.js";
 import uploadRoutes from "./src/routes/uploadRoutes.js";
+import payOSRoutes from "./src/routes/payOSRoutes.js";
 const app = express();
 app.use(express.json());
 
 // CORS configuration (allowlist via CORS_ORIGIN env, comma-separated)
-const allowedOrigins = (process.env.CORS_ORIGIN || "").split(",").map((o) => o.trim()).filter(Boolean);
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // allow non-browser or same-origin
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin))
+      return callback(null, true);
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
@@ -25,6 +30,7 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 app.use(cors(corsOptions));
+
 
 //Init Routers
 app.use("/api/auth", authRoutes);
@@ -36,6 +42,6 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/pricing", pricingRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
-
+app.use("/api/payos", payOSRoutes);
 
 export default app;
