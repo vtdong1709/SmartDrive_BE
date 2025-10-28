@@ -113,9 +113,6 @@ const router = express.Router();
  *                       type: string
  *                       format: date-time
  *                       example: "2025-10-28T10:20:30.000Z"
- *                     provider:
- *                       type: string
- *                       example: payos
  *       400:
  *         description: Thiếu thông tin bắt buộc
  *         content:

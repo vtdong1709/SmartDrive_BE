@@ -1,7 +1,17 @@
 import { getPayOS } from "../config/payOS.js";
 import Booking from "../models/Booking.js";
 import DriverWallet from "../models/DriverWallet.js";
+import DriverTransaction from "../models/DriverTransaction.js";
 import { getIO } from "../socket.js";
+
+// Lấy phần trăm hoa hồng từ ENV, mặc định 15%
+const getCommissionRate = () => {
+  const raw = process.env.BOOKING_COMMISSION_RATE;
+  const percent = raw != null ? Number(raw) : 15;
+  if (isNaN(percent)) return 0.15;
+  const clamped = Math.min(Math.max(percent, 0), 100);
+  return clamped / 100; // chuyển về tỉ lệ (0-1)
+};
 
 export const createPaymentLinkService = async ({
   purpose,
@@ -24,7 +34,8 @@ export const createPaymentLinkService = async ({
         throw new Error(`Không tìm thấy booking với mã ${referenceId}`);
 
       amountInt = Math.floor(Number(booking.totalAmount ?? booking.price));
-      description = `Thanh toán chuyến đi #${referenceId}`;
+      // Mô tả ngắn gọn, tuân thủ ≤ 25 kí tự
+      description = `TT BK ${referenceId}`;
 
       // Reset link cũ nếu có, cập nhật orderCode mới
       booking.payment = booking.payment || {};
@@ -34,26 +45,34 @@ export const createPaymentLinkService = async ({
       const wallet = await DriverWallet.findById(referenceId);
       if (!wallet) throw new Error(`Không tìm thấy ví tài xế`);
 
+      if (amount == null || isNaN(Number(amount)) || Number(amount) <= 0) {
+        throw Object.assign(new Error("Thiếu hoặc sai số tiền nạp ví"), {
+          statusCode: 400,
+        });
+      }
+
       amountInt = Math.floor(Number(amount));
-      description = `Nạp tiền vào ví tài xế`;
+      description = `Nap vi tai xe`;
 
       wallet.lastTopupRequest = wallet.lastTopupRequest || {};
       wallet.lastTopupRequest.orderCode = orderCode;
+      wallet.lastTopupRequest.status = "pending";
       await wallet.save();
     } else {
       throw new Error("purpose không hợp lệ");
     }
 
-    // 🔹 Tạo link thanh toán PayOS
+    // 🔹 Tạo link thanh toán PayOS (mô tả tối đa 25 kí tự theo yêu cầu PayOS)
+    const payosDescription = (description || "Thanh toan").slice(0, 25);
     const paymentLink = await payos.paymentRequests.create({
       orderCode,
       amount: amountInt,
-      description,
+      description: payosDescription,
       returnUrl: "myapp://payment-success",
       cancelUrl: "myapp://payment-cancel",
       items: [
         {
-          name: description,
+          name: payosDescription,
           quantity: 1,
           price: amountInt,
         },
@@ -73,9 +92,8 @@ export const createPaymentLinkService = async ({
         : null,
       qrCode: paymentLink.qrCode,
       checkoutUrl: paymentLink.checkoutUrl,
-      description: paymentLink.description,
+      description: payosDescription,
       createdAt: new Date(),
-      provider: "payos",
     };
 
     if (purpose === "booking") {
@@ -131,7 +149,7 @@ export const handlePayOSWebhookService = async (body) => {
   // ======================================================
   const booking = await Booking.findOne({
     "payment.orderCode": orderCode,
-  }).populate("driver renter");
+  }).populate("driverId customerId");
 
   const wallet = !booking
     ? await DriverWallet.findOne({ "lastTopupRequest.orderCode": orderCode })
@@ -157,31 +175,34 @@ export const handlePayOSWebhookService = async (body) => {
 
     // 👉 Nếu thanh toán thành công, trừ hoa hồng 15% rồi cộng tiền cho tài xế
     if (isSuccess && booking.driverId) {
-      const netAmount = Math.round(amount * (1 - (15/100)));
+      const commissionRate = getCommissionRate();
+      const netAmount = Math.round(Number(amount) * (1 - commissionRate));
 
-      let wallet = await DriverWallet.findOne({ driver: booking.driverId });
-      if (!wallet) {
+      let driverWallet = await DriverWallet.findOne({
+        driver: booking.driverId,
+      });
+      if (!driverWallet) {
         throw Object.assign(
           new Error("Không tìm thấy ví của tài xế để cộng tiền"),
           { statusCode: 404 }
         );
       }
 
-      const balanceBefore = wallet.balance;
-      wallet.balance += netAmount;
-      wallet.totalEarnings += netAmount;
-      await wallet.save();
+      const balanceBefore = driverWallet.balance;
+      driverWallet.balance += netAmount;
+      driverWallet.totalEarnings += netAmount;
+      await driverWallet.save();
 
       // 👉 Ghi lại transaction cho tài xế
       await DriverTransaction.create({
         driver: booking.driverId,
-        wallet: wallet._id,
+        wallet: driverWallet._id,
         booking: booking._id,
         type: "booking_income",
         amount: netAmount,
         balanceBefore,
-        balanceAfter: wallet.balance,
-        note: `Nhận tiền từ booking ${booking.bookingCode}, hoa hồng 15% đã trừ`,
+        balanceAfter: driverWallet.balance,
+        note: `Nhận tiền từ booking ${booking.bookingCode}`,
       });
 
       console.log(
@@ -190,8 +211,8 @@ export const handlePayOSWebhookService = async (body) => {
 
       io.emit("walletUpdated", {
         type: "wallet_topup",
-        driverWalletId: wallet._id,
-        balance: wallet.balance,
+        driverWalletId: driverWallet._id,
+        balance: driverWallet.balance,
         addedAmount: netAmount,
         message: `Cộng ${netAmount}₫ vào ví sau khi hoàn tất chuyến đi ${booking.bookingCode}`,
       });

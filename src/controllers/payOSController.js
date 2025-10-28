@@ -42,7 +42,9 @@ export const createPaymentLinkController = async (req, res) => {
 export const payOSWebhookController = async (req, res) => {
   try {
     const result = await handlePayOSWebhookService(req.body);
-    res.status(200).json("Webhook xử lý: ", result);
+    return res
+      .status(200)
+      .json(successResponse("Xử lý webhook PayOS thành công", result));
   } catch (error) {
     console.error("Webhook error:", error.message);
     res
