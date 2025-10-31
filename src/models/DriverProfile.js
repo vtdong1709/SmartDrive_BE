@@ -14,6 +14,7 @@ const driverProfileSchema = new mongoose.Schema(
     approved: { type: Boolean, default: false },
     availability: { type: String, enum: ["online", "offline"], default: "offline" },
     location: { type: locationSchema, default: undefined },
+    applicationId: { type: mongoose.Schema.Types.ObjectId, ref: "driverapplications", default: null },
   },
   { timestamps: true }
 );
