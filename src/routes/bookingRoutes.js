@@ -8,7 +8,8 @@ import { calculateFare, createBooking,
       getBookingsByUserId, 
       getDriverStats, 
       updateBooking, 
-      updateBookingStatus
+      updateBookingStatus,
+      updatePaymentStatus
     } from "../controllers/bookingController.js";
 import { authenticate, authorizeRoles } from "../middlewares/authMiddleware.js";
 
@@ -766,6 +767,46 @@ router.post("/calculateFare", calculateFare);
  *         description: Forbidden
  */
 router.patch("/updateStatus/:id", authenticate, updateBookingStatus);
+
+
+/**
+ * @swagger
+ * /api/bookings/updatePaymentStatus/{id}:
+ *   patch:
+ *     summary: Cập nhật trạng thái thanh toán booking
+ *     tags: [Bookings]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Booking ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               paymentStatus:
+ *                 type: string
+ *                 enum: [Pending, Paid, Failed]
+ *     responses:
+ *       200:
+ *         description: Payment status updated successfully
+ *       404:
+ *         description: Booking not found
+ *       500:
+ *         description: Internal server error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.patch("/updatePaymentStatus/:id", authenticate, updatePaymentStatus);
 
 
 export default router; 

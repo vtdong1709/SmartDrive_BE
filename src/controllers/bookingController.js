@@ -1,5 +1,4 @@
-import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, getDriverStatsService, updateBookingService, updateBookingStatusService } from "../services/bookingService.js";
-import { getUserById } from "../services/userService.js";
+import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, getDriverStatsService, updateBookingService, updateBookingStatusService, updatePaymentStatusService } from "../services/bookingService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 // export const createBooking = async (req, res) => {
@@ -277,5 +276,17 @@ export const getDriverStats = async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json(errorResponse(error.message));
+  }
+};
+
+export const updatePaymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentStatus } = req.body;
+
+    const result = await updatePaymentStatusService(id, paymentStatus);
+    res.status(200).json(successResponse("Update Payment Status success",result));
+  } catch (error) {
+    res.status(400).json(errorResponse(error.message));
   }
 };

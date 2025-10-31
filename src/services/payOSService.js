@@ -7,8 +7,8 @@ import { getIO } from "../socket.js";
 // Lấy phần trăm hoa hồng từ ENV, mặc định 15%
 const getCommissionRate = () => {
   const raw = process.env.BOOKING_COMMISSION_RATE;
-  const percent = raw != null ? Number(raw) : 15;
-  if (isNaN(percent)) return 0.15;
+  const percent = raw != null ? Number(raw) : 25;
+  if (isNaN(percent)) return 0.25;
   const clamped = Math.min(Math.max(percent, 0), 100);
   return clamped / 100; // chuyển về tỉ lệ (0-1)
 };
@@ -218,6 +218,8 @@ export const handlePayOSWebhookService = async (body) => {
       });
     }
 
+    const baseUrl = process.env.EXPO_REDIRECT_BASE
+
     // Emit trạng thái thanh toán
     io.emit("paymentStatus", {
       type: "booking",
@@ -230,6 +232,10 @@ export const handlePayOSWebhookService = async (body) => {
         ? "Thanh toán chuyến đi thành công"
         : "Thanh toán chuyến đi thất bại hoặc bị hủy",
     });
+
+    const redirectUrl = isSuccess
+      ?  `${baseUrl}/--/booking-success?bookingCode=${booking.bookingCode}`
+      :  `${baseUrl}/--/booking-failed?bookingCode=${booking.bookingCode}`;
 
     return {
       type: "booking",
@@ -275,6 +281,10 @@ export const handlePayOSWebhookService = async (body) => {
       balance: wallet.balance,
       isSuccess,
     });
+
+    const redirectUrl = isSuccess
+    ?  `${baseUrl}/--/wallet-success`
+    :  `${baseUrl}/--/wallet-failed`;
 
     return {
       type: "wallet_topup",
