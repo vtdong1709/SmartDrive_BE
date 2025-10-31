@@ -8,12 +8,6 @@ const WithdrawRequestSchema = new mongoose.Schema(
       required: true,
     },
 
-    transaction: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "driver_transactions",
-      default: null,
-    },
-
     amount: {
       type: Number,
       required: true,
