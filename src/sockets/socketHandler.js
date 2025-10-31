@@ -148,6 +148,16 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
               );
               console.log("distance", distance.toFixed(2));
             if (distance <= MAX_DISTANCE_KM && info.socketId) {
+              const activeBooking = await Booking.findOne({
+                driverId,
+                status: { $in: ["Pending", "Confirmed", "Arriving", "Ongoing"] },
+              });
+            
+              if (activeBooking) {
+                console.log(`Driver ${driverId} is busy with booking ${activeBooking._id}`);
+                continue; // bỏ qua tài xế này
+              }
+            
                 console.log(` Driver ${driverId} is within ${distance.toFixed(2)} km for ${serviceType} booking`);
                 nearbyDrivers.push({ driverId, socketId: info.socketId });
             }
@@ -187,6 +197,16 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
             );
            
             if (distance <= MAX_DISTANCE_KM && info.socketId) {
+              const activeBooking = await Booking.findOne({
+                driverId,
+                status: { $in: ["Pending", "Confirmed", "Arriving", "Ongoing"] },
+              });
+            
+              if (activeBooking) {
+                console.log(` Driver ${driverId} is busy with booking ${activeBooking._id}`);
+                continue; // bỏ qua tài xế này
+              }
+            
                 console.log(` Driver ${driverId} is nearby (${distance.toFixed(2)} km)`);
                 nearbyDrivers.push({ driverId, socketId: info.socketId });
             }

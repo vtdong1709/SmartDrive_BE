@@ -501,3 +501,40 @@ export const getDriverStatsService = async (driverId) => {
     ratingAverage: parseFloat(ratingAverage),
   };
 };
+export const updatePaymentStatusService = async (id, paymentStatus) => {
+  try {
+    if (!id || !paymentStatus) {
+      throw new Error("Thiếu thông tin bookingId hoặc trạng thái thanh toán.");
+    }
+    if (paymentStatus !== "Pending" && paymentStatus !== "Paid" && paymentStatus !== "Failed") {
+      throw new Error("Trạng thái thanh toán không hợp lệ.");
+    }
+    const booking = await Booking.findById(id);
+    if (!booking) {
+      throw new Error("Không tìm thấy booking.");
+    }
+    if (booking.paymentStatus === paymentStatus) {
+      return {
+        message: `Booking đã ở trạng thái ${paymentStatus}.`,
+        booking,
+      };
+    }
+    booking.paymentStatus = paymentStatus;
+
+    if (paymentStatus === "Paid" && booking.status === "Pending") {
+      booking.status = "Confirmed";
+    }
+    if (paymentStatus === "Failed" && booking.status !== "Cancelled") {
+      booking.status = "PaymentFailed";
+    }
+    await booking.save();
+
+    return {
+      message: "Cập nhật trạng thái thanh toán thành công.",
+      booking,
+    };
+  } catch (error) {
+    console.error("Lỗi khi cập nhật paymentStatus:", error.message);
+    throw new Error(error.message);
+  }
+};

@@ -42,6 +42,10 @@ export const createPaymentLinkController = async (req, res) => {
 export const payOSWebhookController = async (req, res) => {
   try {
     const result = await handlePayOSWebhookService(req.body);
+    if (result?.redirectUrl) {
+      console.log("Redirecting user to:", result.redirectUrl);
+      return res.redirect(result.redirectUrl);
+    }
     return res
       .status(200)
       .json(successResponse("Xử lý webhook PayOS thành công", result));
