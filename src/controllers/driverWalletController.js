@@ -1,4 +1,4 @@
-import { getDriverWalletService, createDriverWalletService, updateDriverWalletBankAccountService, getDriverTransactionsService } from "../services/driverWalletService.js";
+import { getDriverWalletService, createDriverWalletService, updateDriverWalletBankAccountService, getDriverTransactionsService, createWithdrawRequestService, approveWithdrawRequestService, rejectWithdrawRequestService } from "../services/driverWalletService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
 /**
@@ -58,6 +58,49 @@ export const getDriverTransactions = async (req, res) => {
     const { page, limit } = req.query;
     const result = await getDriverTransactionsService(driverId, type, req.user, { page, limit });
     res.status(200).json(successResponse("Lấy danh sách giao dịch thành công", result));
+  } catch (error) {
+    res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
+  }
+};
+
+/**
+ * Tạo yêu cầu rút tiền cho tài xế
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const createWithdrawRequest = async (req, res) => {
+  try {
+    const { driverId } = req.params;
+    const { amount } = req.body;
+    const result = await createWithdrawRequestService(driverId, amount, req.user);
+    res.status(201).json(successResponse("Tạo yêu cầu rút tiền thành công", result));
+  } catch (error) {
+    res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
+  }
+};
+
+/**
+ * Duyệt yêu cầu rút tiền (Admin)
+ */
+export const approveWithdrawRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const result = await approveWithdrawRequestService(requestId, req.user);
+    res.status(200).json(successResponse("Duyệt yêu cầu rút tiền thành công", result));
+  } catch (error) {
+    res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
+  }
+};
+
+/**
+ * Từ chối yêu cầu rút tiền và hoàn tiền (Admin)
+ */
+export const rejectWithdrawRequest = async (req, res) => {
+  try {
+    const { requestId } = req.params;
+    const { message } = req.body;
+    const result = await rejectWithdrawRequestService(requestId, message, req.user);
+    res.status(200).json(successResponse("Từ chối yêu cầu rút tiền thành công", result));
   } catch (error) {
     res.status(error.statusCode || 500).json(errorResponse(error.message, error.statusCode || 500));
   }

@@ -1,6 +1,6 @@
 import express from "express";
 import { authenticate, authorizeRoles } from "../middlewares/authMiddleware.js";
-import { getDriverWallet, createDriverWallet, updateDriverWallet, getDriverTransactions } from "../controllers/driverWalletController.js";
+import { getDriverWallet, createDriverWallet, updateDriverWallet, getDriverTransactions, createWithdrawRequest } from "../controllers/driverWalletController.js";
 
 const router = express.Router();
 
@@ -256,6 +256,18 @@ router.post("/", authenticate, authorizeRoles("admin", "driver"), createDriverWa
  *                                     type: string
  *                                   createdAt:
  *                                     type: string
+ *                                   bankInfo:
+ *                                     type: object
+ *                                     properties:
+ *                                       accountNumber:
+ *                                         type: string
+ *                                       accountName:
+ *                                         type: string
+ *                                       bankName:
+ *                                         type: string
+ *                                   adminNote:
+ *                                     type: string
+ *                                     nullable: true
  *                               type:
  *                                 type: string
  *                               amount:
@@ -430,5 +442,52 @@ router.get("/:driverId", authenticate, authorizeRoles("driver", "admin"), getDri
  *               $ref: '#/components/schemas/ApiResponse'
  */
 router.put("/:driverId", authenticate, authorizeRoles("driver", "admin"), updateDriverWallet);
+
+/**
+ * @swagger
+ * /api/driver/wallet/{driverId}/withdraw-requests:
+ *   post:
+ *     summary: Tạo yêu cầu rút tiền
+ *     tags: [DriverWallet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: driverId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID của tài xế
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [amount]
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 minimum: 10000
+ *                 description: Số tiền muốn rút
+ *     responses:
+ *       201:
+ *         description: Tạo yêu cầu rút tiền thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ hoặc số dư không đủ
+ *       403:
+ *         description: Không có quyền
+ *       404:
+ *         description: Không tìm thấy ví hoặc tài xế
+ *       500:
+ *         description: Lỗi server
+ */
+router.post(
+  "/:driverId/withdraw-requests",
+  authenticate,
+  authorizeRoles("driver", "admin"),
+  createWithdrawRequest
+);
+
 
 export default router;

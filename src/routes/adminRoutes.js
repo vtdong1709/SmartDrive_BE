@@ -7,6 +7,7 @@ import {
   rejectApplication,
 } from "../controllers/driverController.js";
 import { validateRejectApplication } from "../middlewares/validateDriver.js";
+import { approveWithdrawRequest, rejectWithdrawRequest } from "../controllers/driverWalletController.js";
 
 const router = express.Router();
 
@@ -179,6 +180,66 @@ router.post(
   authorizeRoles("admin"),
   validateRejectApplication,
   rejectApplication
+);
+
+/**
+ * @swagger
+ * /api/admin/withdraw-requests/{requestId}/approve:
+ *   post:
+ *     summary: (Admin) Duyệt yêu cầu rút tiền
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Duyệt yêu cầu thành công
+ */
+router.post(
+  "/withdraw-requests/:requestId/approve",
+  authenticate,
+  authorizeRoles("admin"),
+  approveWithdrawRequest
+);
+
+/**
+ * @swagger
+ * /api/admin/withdraw-requests/{requestId}/reject:
+ *   post:
+ *     summary: (Admin) Từ chối yêu cầu rút tiền và hoàn tiền
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message]
+ *             properties:
+ *               message:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Từ chối yêu cầu thành công
+ */
+router.post(
+  "/withdraw-requests/:requestId/reject",
+  authenticate,
+  authorizeRoles("admin"),
+  rejectWithdrawRequest
 );
 
 export default router;
