@@ -1,4 +1,5 @@
 import redis from "../redis.js";
+import mongoose from "mongoose";
 import DriverApplication from "../models/DriverApplication.js";
 import DriverProfile from "../models/DriverProfile.js";
 import User from "../models/User.js";
@@ -155,34 +156,52 @@ export async function getApplicationByDriverIdService(driverId) {
 }
 
 export async function approveApplicationService(id) {
-  const app = await DriverApplication.findById(id);
-  if (!app) {
-    throw Object.assign(new Error("Không tìm thấy hồ sơ"), { statusCode: 404 });
-  }
-  if (app.status !== "pending") {
-    throw Object.assign(new Error("Chỉ duyệt hồ sơ ở trạng thái chờ duyệt"), { statusCode: 400 });
-  }
-  app.status = "approved";
-  app.decidedAt = new Date();
-  await app.save();
-  const profile = await DriverProfile.findOneAndUpdate(
-    { userId: app.userId },
-    { $set: { approved: true } },
-    { upsert: true, new: true }
-  );
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
-    const user = await User.findById(app.userId);
-    if (user) {
-      if (user.role !== "driver") {
-        user.role = "driver";
-        await user.save();
-      }
-      await notifyApplicationApproved(user.email, user.fullName);
+    const app = await DriverApplication.findById(id).session(session);
+    if (!app) {
+      throw Object.assign(new Error("Không tìm thấy hồ sơ"), { statusCode: 404 });
     }
+    if (app.status !== "pending") {
+      throw Object.assign(new Error("Chỉ duyệt hồ sơ ở trạng thái chờ duyệt"), { statusCode: 400 });
+    }
+
+    app.status = "approved";
+    app.decidedAt = new Date();
+    await app.save({ session });
+
+    const profile = await DriverProfile.findOneAndUpdate(
+      { userId: app.userId },
+      { $set: { approved: true, applicationId: app._id } },
+      { upsert: true, new: true, session }
+    );
+
+    const user = await User.findById(app.userId).session(session);
+    if (!user) {
+      throw Object.assign(new Error("Không tìm thấy người dùng"), { statusCode: 404 });
+    }
+    if (user.role !== "driver") {
+      user.role = "driver";
+    }
+    user.driverProfileId = profile._id;
+    await user.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    try {
+      await notifyApplicationApproved(user.email, user.fullName);
+    } catch (e) {
+      console.warn("notifyApplicationApproved error:", e?.message || e);
+    }
+
+    return { app, profile };
   } catch (e) {
-    console.warn("notifyApplicationApproved error:", e?.message || e);
+    await session.abortTransaction();
+    session.endSession();
+    throw e;
   }
-  return { app, profile };
 }
 
 export async function rejectApplicationService(id, reason) {
