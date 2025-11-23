@@ -1,31 +1,6 @@
 import { calculateFareService, createBookingService, deleteBookingService, getAllBookingsService, getBookingByIdService, getBookingsByDriverIdService, getBookingsByStatusService, getBookingsByUserIdService, getDriverStatsService, updateBookingService, updateBookingStatusService, updatePaymentStatusService } from "../services/bookingService.js";
 import { errorResponse, successResponse } from "../utils/apiResponse.js";
 
-// export const createBooking = async (req, res) => {
-//     try {
-//         const { driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance, duration } = req.body;
-//         const customerId = req.user.id;
-//         const bookingData = {
-//             customerId,
-//             driverId,
-//             startTime,
-//             endTime,
-//             pickupLocation,
-//             dropoffLocation,
-//             distance,
-//             duration,
-//             price,
-//             createdAt: new Date(),
-//         };
-//         console.log(bookingData);
-//         const booking = await createBookingService(bookingData);
-//         res.status(200).json(successResponse("Đặt tài xế thành công", booking));
-//     } catch (error) {
-//         res
-//         .status(error.code || 500)
-//         .json(errorResponse(error.message, error.code));
-//     }
-// };
 
 export const createBooking = async (req, res) => {
     try {
@@ -45,7 +20,6 @@ export const createBooking = async (req, res) => {
   
       const customerId = req.user.id;
   
-      // --- Kiểm tra bắt buộc chung ---
       if (!driverId || !serviceType || !startTime || !pickupLocation) {
         return res.status(400).json(
           errorResponse(
@@ -55,11 +29,9 @@ export const createBooking = async (req, res) => {
         );
       }
   
-      // --- Kiểm tra điều kiện riêng theo loại đặt xe ---
       switch (serviceType) {
         case "per_km":
         case "intercity":
-          // => Cần điểm đến, không bắt buộc endTime
           if (!dropoffLocation) {
             return res
               .status(400)
@@ -68,7 +40,6 @@ export const createBooking = async (req, res) => {
           break;
   
         case "hourly":
-          // => Cần endTime và thời gian hợp lệ (4h hoặc 8h)
           if (!endTime) {
             return res
               .status(400)
@@ -91,7 +62,6 @@ export const createBooking = async (req, res) => {
           break;
   
         case "daily":
-          // => Cần endTime và thời gian từ 1 đến 3 ngày
           if (!endTime) {
             return res
               .status(400)
@@ -265,11 +235,9 @@ export const updateBookingStatus = async (req, res) => {
     }
 };
 
-//thống kê cho tài xế
 export const getDriverStats = async (req, res) => {
   try {
-    // Lấy driverId từ token (middleware đã gán req.user)
-    const driverId = req.user._id.toString(); // convert sang string để chắc chắn hợp lệ
+    const driverId = req.user._id.toString();
 
     const stats = await getDriverStatsService(driverId);
     return res.status(200).json(successResponse("Driver stats", stats));

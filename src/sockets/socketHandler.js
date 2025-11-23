@@ -5,6 +5,7 @@ import redis from "../redis.js";
 import { sendNotification } from "../services/notificationService.js";
 import Booking from "../models/Booking.js";
 import {formatCurrency} from "../utils/formatCurrency.js";
+import { timeStamp } from "console";
 
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
@@ -331,7 +332,7 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
         await sendNotification(io, {
           userId: reqObj.data.customerId,
           title: "Tài xế đã nhận chuyến",
-          message: `Tài xế đã nhận chuyến của bạn. Tên tài xế: ${driverId}`,
+          message: `Đã có tài xế nhận chuyến của bạn. Vui lòng chờ tài xế đến điểm đón.`,
           type: "booking",
           meta: { requestId, driverId },
           // email: reqObj.customerInfo?.email, sendMail: false
@@ -492,6 +493,14 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
       } catch (err) {
         console.error("Failed to send bookingCancelled notifications:", err?.message || err);
       }
+});
+
+// Trong file socket BE, thêm vào io.on("connection", (socket) => { ... })
+socket.on("joinCustomerRoom", ({ customerId }) => {
+  if (customerId) {
+    socket.join(customerId);
+    console.log(`Customer ${customerId} joined room`);
+  }
 });
 
     // Ngắt kết nối
