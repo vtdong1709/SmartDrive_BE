@@ -6,6 +6,8 @@ import { sendNotification } from "../services/notificationService.js";
 import Booking from "../models/Booking.js";
 import {formatCurrency} from "../utils/formatCurrency.js";
 import { timeStamp } from "console";
+import { sendMessageService } from "../services/chatService.js";
+import ChatMessage from "../models/ChatMessage.js";
 
 // Lưu trữ tạm thời (in-memory)
 const onlineDrivers = new Map(); // driverId -> { socketId, location, lastSeen }
@@ -16,6 +18,9 @@ export function setupSocket(io) {
 
   io.on("connection", (socket) => {
     console.log(`New socket connected: ${socket.id}`);
+    
+    // Lưu userId vào socket để dùng sau này
+    socket.userId = null;
 
     //Khi tài xế online
     socket.on("driverOnline", async (data) => {
@@ -397,14 +402,14 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
                 message = "Chuyến đi đã bị hủy.";
               }
     
-              await sendNotification(io, {
-                userId: booking.customerId?._id?.toString() || null,
-                title,
-                message,
-                type: "booking",
-                meta: { bookingId, status },
-                // sendMail: false
-              });
+            await sendNotification(io, {
+              userId: booking.customerId?._id?.toString() || null,
+              title,
+              message,
+              type: "booking",
+              meta: { bookingId, status },
+              // sendMail: false
+            });
             // }
             // if (booking.driverId?._id) {
             //   await sendNotification(io, {
@@ -415,6 +420,19 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
             //     meta: { bookingId, status },
             //   });
             // }
+            
+            // Thông báo chat kết thúc nếu booking Completed hoặc Cancelled
+            if (status === "Completed" || status === "Cancelled") {
+              const roomName = `booking:${bookingId}`;
+              io.to(roomName).emit("chatEnded", {
+                bookingId,
+                status,
+                message: status === "Completed" 
+                  ? "Chuyến đi đã hoàn tất. Phiên chat đã kết thúc." 
+                  : "Chuyến đi đã bị hủy. Phiên chat đã kết thúc.",
+              });
+              console.log(`Chat ended for booking ${bookingId} - Status: ${status}`);
+            }
     
         } catch (error) {
             console.error("Error updating booking status:", error);
@@ -502,6 +520,176 @@ socket.on("joinCustomerRoom", ({ customerId }) => {
     console.log(`Customer ${customerId} joined room`);
   }
 });
+
+    /**
+     * Join vào room user để nhận tin nhắn và thông báo
+     */
+    socket.on("joinUserRoom", ({ userId }) => {
+      if (userId) {
+        socket.userId = userId;
+        const userRoom = `user:${userId}`;
+        socket.join(userRoom);
+        console.log(`User ${userId} joined user room ${userRoom}`);
+        socket.emit("userRoomJoined", { userId });
+      }
+    });
+
+    // ========== CHAT HANDLERS ==========
+    
+    /**
+     * Join vào room chat của một booking
+     */
+    socket.on("joinChatRoom", async ({ bookingId, userId }) => {
+      try {
+        // Lưu userId vào socket
+        socket.userId = userId;
+
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+          socket.emit("chatError", { message: "Không tìm thấy booking" });
+          return;
+        }
+
+        // Kiểm tra user có phải là customer hoặc driver không
+        const isCustomer = booking.customerId.toString() === userId.toString();
+        const isDriver = booking.driverId.toString() === userId.toString();
+
+        if (!isCustomer && !isDriver) {
+          socket.emit("chatError", { message: "Không có quyền truy cập chat này" });
+          return;
+        }
+
+        // Kiểm tra trạng thái booking
+        const allowedStatuses = ["Confirmed", "Arriving", "Ongoing"];
+        if (!allowedStatuses.includes(booking.status)) {
+          socket.emit("chatError", { 
+            message: `Không thể chat. Booking đang ở trạng thái "${booking.status}"` 
+          });
+          return;
+        }
+
+        // Join vào room booking
+        const roomName = `booking:${bookingId}`;
+        socket.join(roomName);
+        
+        // Đồng thời join vào room user để nhận tin nhắn ngay cả khi chưa mở chat
+        const userRoom = `user:${userId}`;
+        socket.join(userRoom);
+        
+        console.log(`User ${userId} joined chat room for booking ${bookingId} and user room ${userRoom}`);
+        
+        // Xác nhận đã join thành công
+        socket.emit("chatRoomJoined", { bookingId, userId });
+      } catch (error) {
+        console.error("Error joining chat room:", error);
+        socket.emit("chatError", { message: "Có lỗi xảy ra khi tham gia chat" });
+      }
+    });
+
+    /**
+     * Gửi tin nhắn real-time
+     */
+    socket.on("sendChatMessage", async ({ bookingId, senderId, message }) => {
+      try {
+        if (!message || !message.trim()) {
+          socket.emit("chatError", { message: "Tin nhắn không được để trống" });
+          return;
+        }
+
+        // Lấy thông tin booking để xác định receiver
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+          socket.emit("chatError", { message: "Không tìm thấy booking" });
+          return;
+        }
+
+        // Xác định receiver
+        const receiverId = booking.customerId.toString() === senderId.toString()
+          ? booking.driverId.toString()
+          : booking.customerId.toString();
+
+        // Gửi tin nhắn qua service (có validation)
+        const chatMessage = await sendMessageService(bookingId, senderId, message.trim());
+        
+        // Populate sender info
+        await chatMessage.populate("senderId", "fullName avatar role");
+
+        // Đảm bảo sender đã join room
+        const roomName = `booking:${bookingId}`;
+        socket.join(roomName);
+
+        // Chuẩn bị data tin nhắn
+        const messageData = {
+          message: chatMessage,
+          bookingId: bookingId,
+        };
+
+        // Lấy số sockets trong room để debug
+        const bookingRoomSockets = await io.in(roomName).fetchSockets();
+        const receiverRoomSockets = await io.in(`user:${receiverId}`).fetchSockets();
+
+        // Emit đến room booking (cho cả 2 bên nếu đã join)
+        io.to(roomName).emit("newChatMessage", messageData);
+
+        // Emit đến room user của receiver để đảm bảo họ nhận được ngay cả khi chưa join booking room
+        io.to(`user:${receiverId}`).emit("newChatMessage", messageData);
+
+        console.log(`Chat message sent in booking ${bookingId} by user ${senderId} to receiver ${receiverId}`);
+        console.log(`Emitted to room: ${roomName} (${bookingRoomSockets.length} sockets) and user:${receiverId} (${receiverRoomSockets.length} sockets)`);
+      } catch (error) {
+        console.error("Error sending chat message:", error);
+        socket.emit("chatError", { 
+          message: error.message || "Có lỗi xảy ra khi gửi tin nhắn" 
+        });
+      }
+    });
+
+    /**
+     * Đánh dấu tin nhắn đã đọc
+     */
+    socket.on("markChatAsRead", async ({ bookingId, userId }) => {
+      try {
+        const booking = await Booking.findById(bookingId);
+        if (!booking) {
+          socket.emit("chatError", { message: "Không tìm thấy booking" });
+          return;
+        }
+
+        // Kiểm tra quyền
+        const isCustomer = booking.customerId.toString() === userId.toString();
+        const isDriver = booking.driverId.toString() === userId.toString();
+
+        if (!isCustomer && !isDriver) {
+          socket.emit("chatError", { message: "Không có quyền truy cập chat này" });
+          return;
+        }
+
+        // Đánh dấu đã đọc
+        await ChatMessage.updateMany(
+          {
+            bookingId,
+            receiverId: userId,
+            isRead: false,
+          },
+          {
+            isRead: true,
+            readAt: new Date(),
+          }
+        );
+
+        // Thông báo cho room
+        const roomName = `booking:${bookingId}`;
+        io.to(roomName).emit("chatMarkedAsRead", {
+          bookingId,
+          userId,
+        });
+      } catch (error) {
+        console.error("Error marking chat as read:", error);
+        socket.emit("chatError", { message: "Có lỗi xảy ra khi đánh dấu đã đọc" });
+      }
+    });
+
+    // ========== END CHAT HANDLERS ==========
 
     // Ngắt kết nối
     socket.on("disconnect", async() => {
