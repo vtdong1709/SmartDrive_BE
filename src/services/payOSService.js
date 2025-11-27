@@ -7,8 +7,8 @@ import { getIO } from "../socket.js";
 // Lấy phần trăm hoa hồng từ ENV, mặc định 15%
 const getCommissionRate = () => {
   const raw = process.env.BOOKING_COMMISSION_RATE;
-  const percent = raw != null ? Number(raw) : 25;
-  if (isNaN(percent)) return 0.25;
+  const percent = raw != null ? Number(raw) : 15;
+  if (isNaN(percent)) return 0.15;
   const clamped = Math.min(Math.max(percent, 0), 100);
   return clamped / 100; // chuyển về tỉ lệ (0-1)
 };

@@ -1,4 +1,4 @@
-// models/Notification.js
+
 import mongoose from "mongoose";
 
 const notificationSchema = new mongoose.Schema(
@@ -11,7 +11,7 @@ const notificationSchema = new mongoose.Schema(
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
-    meta: { type: Object, default: {} }, // mở rộng: chứa bookingId, driverId, etc.
+    meta: { type: Object, default: {} },
     isRead: { type: Boolean, default: false },
   },
   { timestamps: true }

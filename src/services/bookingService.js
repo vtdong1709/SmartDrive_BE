@@ -197,6 +197,22 @@ export const getBookingsByStatusService = async (status, page = 1, limit = 10) =
   };
 };
 
+let cachedHolidays = {};
+
+async function getVietnamHolidays(year) {
+  if (cachedHolidays[year]) return cachedHolidays[year];
+
+  const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/VN`;
+  const { data } = await axios.get(url);
+
+  // data = [{ date: "2025-01-01", localName: "...", name: "...", ... }]
+
+  const holidayDates = data.map((h) => h.date); // lấy YYYY-MM-DD
+
+  cachedHolidays[year] = holidayDates;
+  return holidayDates;
+}
+
 export const calculateFareService = async (
   pickupLocation,
   dropoffLocation,
@@ -234,9 +250,6 @@ export const calculateFareService = async (
     hourBrackets,
     dayBrackets,
     multipliers,
-    maxKmPerHour,
-    maxKmPerDay,
-    surchargePerKm,
     turnBackFees,
     platformFee,
   } = activePricing;
@@ -247,11 +260,23 @@ export const calculateFareService = async (
   if (hour >= 23 || hour < 6) multiplier *= multipliers.after23h || 1;
   if (dayOfWeek === 0 || dayOfWeek === 6) multiplier *= multipliers.weekend || 1;
 
-  const holidays = ["2025-01-01", "2025-04-30", "2025-05-01", "2025-09-02"];
-  const isHoliday = holidays.some(
-    (d) => currentTime.toISOString().slice(0, 10) === d
-  );
-  if (isHoliday) multiplier *= multipliers.holiday || 1;
+  // const holidays = ["2025-01-01", "2025-04-30", "2025-05-01", "2025-09-02"];
+  // const isHoliday = holidays.some(
+  //   (d) => currentTime.toISOString().slice(0, 10) === d
+  // );
+  // if (isHoliday) multiplier *= multipliers.holiday || 1;
+
+  // === Lấy năm hiện tại theo startTime ===
+const year = currentTime.getFullYear();
+const holidays = await getVietnamHolidays(year);
+
+const today = currentTime.toISOString().slice(0, 10);
+const isHoliday = holidays.includes(today);
+
+if (isHoliday) {
+  multiplier *= multipliers.holiday || 1;
+}
+
 
   // === Khởi tạo các giá trị trả về ===
   let fare = baseFare;
@@ -482,7 +507,7 @@ export const getDriverStatsService = async (driverId) => {
 
   const tripsToday = bookings.length;
   const incomeToday = bookings.reduce((sum, b) => {
-    const tripIncome = (b.price || 0) * 0.75; // trừ 25%
+    const tripIncome = (b.price || 0) * 0.85; // trừ 15%
     return sum + tripIncome;
   }, 0);
   const durationToday = bookings.reduce((sum, b) => {
@@ -528,6 +553,17 @@ export const updatePaymentStatusService = async (id, paymentStatus) => {
       booking.status = "PaymentFailed";
     }
     await booking.save();
+
+    if (io && booking.customerId?._id) {
+      const payload = {
+        bookingId: booking._id.toString(),
+        update: { paymentStatus },
+        actor: "driver",
+        timeStamp: new Date().toISOString(),
+      };
+      io.to(booking.customerId._id.toString()).emit("paymentStatusUpdated", payload);
+      console.log("send message paymentStatus thành công", payload)
+    }
 
     return {
       message: "Cập nhật trạng thái thanh toán thành công.",
