@@ -13,6 +13,7 @@ import payOSRoutes from "./src/routes/payOSRoutes.js";
 import driverWalletRoutes from "./src/routes/driverWalletRoutes.js";
 import chatbotRoutes from "./src/routes/chatbotRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
+import deleteAccountRoutes from "./src/routes/deleteAccountRoutes.js";
 const app = express();
 app.use(express.json());
 
@@ -49,5 +50,6 @@ app.use("/api/payos", payOSRoutes);
 app.use("/api/driver/wallet", driverWalletRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/delete-account", deleteAccountRoutes);
 
 export default app;

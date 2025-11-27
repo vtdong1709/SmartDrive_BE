@@ -12,15 +12,18 @@ export const sendOtpEmail = async ({ to, name, otpCode, type }) => {
     case "reset_password":
       subject = "Bạn đã yêu cầu đổi mật khẩu";
       break;
+    case "delete_account":
+      subject = "Mã OTP xác thực xóa tài khoản";
+      break;
     default:
       subject = "Mã OTP";
   }
 
   const mailOptions = {
-    from: `Quản trị viên EV Rental <${process.env.SMTP_USER}>`,
+    from: `Quản trị viên SmartDrive <${process.env.SMTP_USER}>`,
     to,
     subject,
-    html: otpTemplate({ name, otp: otpCode }),
+    html: otpTemplate({ name, otp: otpCode, type }),
   };
 
   try {
