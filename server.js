@@ -38,7 +38,7 @@ export { io, server };
 //   console.log(`Server is running on PORT ${PORT}`);
 //   console.log(`API docs available at http://localhost:${PORT}/api-docs`);
 // });
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server is running on PORT ${PORT}`);
   console.log(`API docs available at http://localhost:${PORT}/api-docs`);
   console.log(`Socket.IO is ready on ws://localhost:${PORT}`);
