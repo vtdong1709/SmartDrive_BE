@@ -5,7 +5,7 @@ import bcrypt from "bcrypt";
 
 const OTP_EXPIRATION = 5 * 60 * 1000;
 const MAX_ATTEMPTS = 3;
-const VALID_TYPES = ["verify_email", "reset_password"];
+const VALID_TYPES = ["verify_email", "reset_password", "delete_account"];
 
 export const generateAndSendOTPToEmailService = async (email, type) => {
   if (!email)

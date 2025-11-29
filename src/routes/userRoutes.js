@@ -212,3 +212,5 @@ router.put("/:id", authenticate, authorizeRoles("admin"), updateUserByAdmin);
 router.delete("/:id", authenticate, authorizeRoles("admin"), deleteUser);
 
 export default router;
+
+

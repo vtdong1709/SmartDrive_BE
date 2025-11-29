@@ -402,14 +402,14 @@ socket.on("bookingCreated", ({ requestId, bookingId }) => {
                 message = "Chuyến đi đã bị hủy.";
               }
     
-            await sendNotification(io, {
-              userId: booking.customerId?._id?.toString() || null,
-              title,
-              message,
-              type: "booking",
-              meta: { bookingId, status },
-              // sendMail: false
-            });
+              await sendNotification(io, {
+                userId: booking.customerId?._id?.toString() || null,
+                title,
+                message,
+                type: "booking",
+                meta: { bookingId, status },
+                // sendMail: false
+              });
             // }
             // if (booking.driverId?._id) {
             //   await sendNotification(io, {
