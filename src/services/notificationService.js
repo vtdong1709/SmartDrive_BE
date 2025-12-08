@@ -1,6 +1,8 @@
 import { getTransporter } from "../config/mailConfig.js";
 import Notification from "../models/Notification.js";
 import redis from "../redis.js";
+import User from "../models/User.js";
+import axios from "axios";
 
 function baseTemplate({ title, body }) {
   return `
@@ -11,6 +13,33 @@ function baseTemplate({ title, body }) {
       <div style="margin-top:24px;color:#9ca3af;font-size:12px;">SmartDrive</div>
     </div>
   </div>`;
+}
+
+const TELEGRAM_TOKEN = process.env.BOT_TOKEN;
+const TELEGRAM_API = `https://api.telegram.org/bot${TELEGRAM_TOKEN}`;
+const MINI_APP_URL = "https://app.smartdrive.io.vn";
+
+async function sendTelegramMessage(chatId, title, message) {
+  if (!chatId) return;
+
+  try {
+    await axios.post(`${TELEGRAM_API}/sendMessage`, {
+      chat_id: chatId,
+      text: ` ${title}\n${message}`,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: " Mở SmartDrive App",
+              web_app: { url: MINI_APP_URL }
+            }
+          ]
+        ]
+      }
+    });
+  } catch (err) {
+    console.error("Telegram send error:", err?.response?.data || err.message);
+  }
 }
 
 export async function notifyApplicationSubmitted(to, name) {
@@ -111,6 +140,16 @@ export async function sendNotification(io, { userId, title, message, type = "inf
     io.emit("notificationBroadcast", { userId, title, message, type, meta, timestamp: new Date().toISOString() });
   } catch (err) {
     console.error("Socket emit error:", err?.message || err);
+  }
+
+  // 4. SEND TELEGRAM MESSAGE
+  try {
+    const user = await User.findById(userId).select("telegramChatId");
+    if (user?.telegramChatId) {
+      await sendTelegramMessage(user.telegramChatId, title, message);
+    }
+  } catch (err) {
+    console.error("Telegram notify error:", err?.message || err);
   }
 
   return notification;
