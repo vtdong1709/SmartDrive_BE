@@ -25,7 +25,6 @@
 require("dotenv").config();
 const { Telegraf } = require("telegraf");
 const express = require("express");
-const axios = require("axios");
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 const app = express();
@@ -34,23 +33,21 @@ app.use(express.json());
 
 // ======== CẤU HÌNH ========
 
-const MINI_APP_URL = process.env.MINI_APP_URL;
-const MAIN_BE_API = process.env.MAIN_BE_API;
+// Kiểm tra cấu hình bắt buộc
+// if (!MAIN_BE_API) {
+//   console.error("⚠️ MAIN_BE_API chưa được cấu hình. Vui lòng thêm vào .env");
+// }
+// if (!process.env.BOT_TOKEN) {
+//   console.error("⚠️ BOT_TOKEN chưa được cấu hình. Bot sẽ không chạy được.");
+// }
 
 // ======== /start ========
 
 bot.start(async (ctx) => {
   try {
-    const chatId = String(ctx.chat.id);
-    const telegramId = String(ctx.from.id);
-    const username = ctx.from.username || "";
-
-    // Gửi thông tin user về BE chính
-    await axios.post(`${MAIN_BE_API}/api/users/link-telegram`, {
-      telegramId,
-      chatId,
-      username
-    });
+    // const chatId = String(ctx.chat.id);
+    // const telegramId = String(ctx.from.id);
+    // const username = ctx.from.username || "";
 
     // Menu chính
     await ctx.reply("🚗 Chào mừng bạn đến SmartDrive", {
@@ -59,7 +56,7 @@ bot.start(async (ctx) => {
           [
             {
               text: "Mở SmartDrive App",
-              web_app: { url: MINI_APP_URL }
+              web_app: { url:"https://app.smartdrive.io.vn" }
             }
           ]
         ]
@@ -82,7 +79,9 @@ bot.start(async (ctx) => {
       }
     });
   } catch (err) {
-    console.error("Start error:", err?.message);
+    const status = err?.response?.status;
+    const data = err?.response?.data;
+    console.error("Start error:", status, data || err?.message);
     ctx.reply("Có lỗi khi kết nối với hệ thống SmartDrive");
   }
 });
@@ -102,7 +101,7 @@ bot.on("location", async (ctx) => {
           [
             {
               text: "Mở SmartDrive",
-              web_app: { url: MINI_APP_URL }
+              web_app: { url: "https://app.smartdrive.io.vn" }
             }
           ]
         ]
@@ -176,7 +175,8 @@ app.post("/send", async (req, res) => {
 
 // ======== CHẠY SERVER ========
 
-const PORT = 5005;
+// Dùng cổng riêng cho bot, tránh trùng với BE chính
+const PORT = process.env.BOT_PORT || 5005;
 
 app.listen(PORT, () => {
   console.log(`Bot API running at http://localhost:${PORT}`);
