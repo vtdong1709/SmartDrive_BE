@@ -105,6 +105,19 @@ const convertHistoryToGeminiFormat = (history) => {
   }));
 };
 
+const getCachedSystemPrompt = async () => {
+  const cacheKey = "smartdrive:system_prompt";
+
+  const cached = await redis.get(cacheKey);
+  if (cached) return cached;
+
+  const prompt = await createSystemPrompt();
+  await redis.setex(cacheKey, 3600, prompt); // cache 1 giờ
+
+  return prompt;
+};
+
+
 /**
  * Gửi tin nhắn đến chatbot và nhận phản hồi
  */
@@ -114,12 +127,17 @@ export const sendMessage = async (sessionId, userMessage) => {
     let chatHistory = await getChatHistory(sessionId);
 
     // Tạo system prompt với dữ liệu thật từ database
-    const systemPrompt = await createSystemPrompt();
+    // const systemPrompt = await createSystemPrompt();
+    const systemPrompt = await getCachedSystemPrompt();
+
+    await new Promise((r) => setTimeout(r, 300));
+
 
     // Khởi tạo model Gemini
-    const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash",
-    });
+    // const model = genAI.getGenerativeModel({ 
+    //   model: "gemini-1.5-flash",
+    // });
+    const model = getSafeModel();
 
     // Chuẩn bị lịch sử chat cho Gemini
     let geminiHistory = [];
@@ -146,7 +164,8 @@ export const sendMessage = async (sessionId, userMessage) => {
     }
     
     // Thêm nhắc nhở về database vào tin nhắn của user
-    const enhancedUserMessage = `${userMessage}\n\n[LƯU Ý: Hãy trả lời dựa trên thông tin từ database được cung cấp. Nếu câu hỏi về bảng giá, cách đăng ký, cách đặt xe, v.v., bạn PHẢI dùng đúng thông tin từ database, không được dùng kiến thức chung.]\n\n${databaseInfo}`;
+    // const enhancedUserMessage = `${userMessage}\n\n[LƯU Ý: Hãy trả lời dựa trên thông tin từ database được cung cấp. Nếu câu hỏi về bảng giá, cách đăng ký, cách đặt xe, v.v., bạn PHẢI dùng đúng thông tin từ database, không được dùng kiến thức chung.]\n\n${databaseInfo}`;
+    const enhancedUserMessage = userMessage;
 
     // Tạo chat session với lịch sử
     const chat = model.startChat({
@@ -196,6 +215,15 @@ export const sendMessage = async (sessionId, userMessage) => {
     throw new Error(
       error.message || "Có lỗi xảy ra khi xử lý tin nhắn. Vui lòng thử lại sau."
     );
+  }
+};
+
+
+const getSafeModel = () => {
+  try {
+    return genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  } catch {
+    return genAI.getGenerativeModel({ model: "gemini-pro" });
   }
 };
 
