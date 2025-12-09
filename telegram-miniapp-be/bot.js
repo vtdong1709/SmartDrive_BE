@@ -22,6 +22,7 @@
 // // Bot chạy
 // bot.launch();
 // console.log("Bot is running...");
+
 require("dotenv").config();
 const { Telegraf } = require("telegraf");
 const express = require("express");
@@ -129,7 +130,7 @@ bot.on("inline_query", async (ctx) => {
             [
               {
                 text: "🚀 Open SmartDrive",
-                web_app: { url: MINI_APP_URL }
+                web_app: { url: "https://app.smartdrive.io.vn" }
               }
             ]
           ]
@@ -159,7 +160,7 @@ app.post("/send", async (req, res) => {
           [
             {
               text: "🚀 Mở SmartDrive App",
-              web_app: { url: MINI_APP_URL }
+              web_app: { url: "https://app.smartdrive.io.vn" }
             }
           ]
         ]
