@@ -7,6 +7,7 @@ import { onlineDrivers, pendingRequests } from "../sockets/socketHandler.js";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
 import DriverWallet from "../models/DriverWallet.js";
+import { sendNotification } from "../services/notificationService.js";
 
 export const createBookingService = async (bookingData) => {
   const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType, paymentMethod} = bookingData;
@@ -45,6 +46,22 @@ export const createBookingService = async (bookingData) => {
       `Đã cộng nợ hoa hồng ${commissionDebt}₫ cho tài xế ${driverId}`
     );
   }
+  if (driverId) {
+    await sendNotification(io, {
+      userId: driverId,
+      title: "🚗 Có cuốc xe mới",
+      message: "Bạn có cuốc xe mới gần vị trí của bạn"
+    });
+  }
+  
+  if (customerId) {
+    await sendNotification(io, {
+      userId: customerId,
+      title: "Đặt xe thành công",
+      message: "Hệ thống đang tìm tài xế cho bạn"
+    });
+  }
+  
   return booking;
 };
 
@@ -80,6 +97,23 @@ export const updateBookingService = async (id, updateData) => {
   });
   if (!booking) {
     throw new errorResponse("Không tìm thấy booking", 404);
+  }
+   // Notify khách
+   if (booking.customerId) {
+    await sendNotification(io, {
+      userId: booking.customerId,
+      title: "📢 Cập nhật cuốc xe",
+      message: `Trạng thái chuyến đi đã được cập nhật: ${status}`
+    });
+  }
+
+  // Notify tài xế
+  if (booking.driverId) {
+    await sendNotification(io, {
+      userId: booking.driverId,
+      title: "📢 Cập nhật chuyến",
+      message: `Trạng thái chuyến đi đã được cập nhật: ${status}`
+    });
   }
   return booking;
 };
@@ -553,6 +587,24 @@ export const updatePaymentStatusService = async (id, paymentStatus) => {
       booking.status = "PaymentFailed";
     }
     await booking.save();
+    if (paymentStatus === "Paid") {
+      if (booking.customerId) {
+        await sendNotification(io, {
+          userId: booking.customerId._id || booking.customerId,
+          title: "💰 Thanh toán thành công",
+          message: "Bạn đã thanh toán thành công cho cuốc xe!"
+        });
+      }
+    
+      if (booking.driverId) {
+        await sendNotification(io, {
+          userId: booking.driverId,
+          title: "💵 Có chuyến đã được thanh toán",
+          message: "Một cuốc xe của bạn đã được thanh toán"
+        });
+      }
+    }
+    
 
     if (io && booking.customerId?._id) {
       const payload = {

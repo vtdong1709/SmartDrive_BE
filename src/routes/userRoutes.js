@@ -10,6 +10,7 @@ import {
   updateUserByAdmin,
   updateUserProfile,
 } from "../controllers/userController.js";
+import { linkTelegramAccountFromBot } from "../controllers/telegramController.js";
 
 const router = express.Router();
 
@@ -103,6 +104,49 @@ const router = express.Router();
  *         description: Unauthorized
  */
 router.put("/profile", authenticate, updateUserProfile);
+
+/**
+ * @swagger
+ * /api/users/link-telegram:
+ *   post:
+ *     summary: Liên kết tài khoản Telegram từ bot
+ *     tags: [Users]
+ *     description: Endpoint này được bot Telegram gọi khi user bắt đầu chat với bot
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - telegramId
+ *               - chatId
+ *             properties:
+ *               telegramId:
+ *                 type: string
+ *                 description: Telegram user ID
+ *                 example: "123456789"
+ *               chatId:
+ *                 type: string
+ *                 description: Telegram chat ID
+ *                 example: "123456789"
+ *               username:
+ *                 type: string
+ *                 description: Telegram username (optional)
+ *                 example: "smartdrive_user"
+ *               userId:
+ *                 type: string
+ *                 description: MongoDB user ID (optional, nếu có sẽ link trực tiếp)
+ *                 example: "65a1bcde1234567890abcd12"
+ *     responses:
+ *       200:
+ *         description: Liên kết thành công
+ *       400:
+ *         description: Thiếu thông tin bắt buộc
+ *       404:
+ *         description: Không tìm thấy người dùng
+ */
+router.post("/link-telegram", linkTelegramAccountFromBot);
 
 // ================== Admin Routes ==================
 

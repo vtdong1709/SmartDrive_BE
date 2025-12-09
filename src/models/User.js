@@ -39,6 +39,20 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
     },
+    telegramId: {
+      type: String,
+      default: null,
+      sparse: true, // Cho phép null nhưng unique nếu có giá trị
+    },
+    telegramChatId: {
+      type: String,
+      default: null
+    },
+    telegramUsername: {
+      type: String,
+      default: null
+    },
+    
     password: {
       type: String,
       required: true,

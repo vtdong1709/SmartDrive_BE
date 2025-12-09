@@ -85,3 +85,61 @@ export const deleteUserService = async (userId) => {
   }
   return true;
 };
+
+/**
+ * Link Telegram account bằng telegramId
+ * Tìm user bằng telegramId hoặc userId, sau đó cập nhật thông tin Telegram
+ * @param {object} data - { telegramId, chatId, username, userId? }
+ * @returns {Promise<User>}
+ */
+export const linkTelegramAccountService = async (data) => {
+  const { telegramId, chatId, username, userId } = data;
+
+  if (!telegramId || !chatId) {
+    throw Object.assign(new Error("Thiếu telegramId hoặc chatId"), {
+      statusCode: 400,
+    });
+  }
+
+  let user;
+
+  // Nếu có userId, tìm user bằng userId
+  if (userId) {
+    user = await User.findById(userId);
+    if (!user) {
+      throw Object.assign(new Error("Không tìm thấy người dùng"), {
+        statusCode: 404,
+      });
+    }
+  } else {
+    // Nếu không có userId, tìm user bằng telegramId
+    user = await User.findOne({ telegramId });
+    
+    // Nếu không tìm thấy, tìm user có telegramChatId trùng với chatId
+    if (!user) {
+      user = await User.findOne({ telegramChatId: chatId });
+    }
+  }
+
+  // Nếu vẫn không tìm thấy user, có thể tạo mới hoặc báo lỗi
+  // Ở đây tôi sẽ báo lỗi vì cần user đã tồn tại trong hệ thống
+  if (!user) {
+    throw Object.assign(
+      new Error(
+        "Không tìm thấy người dùng. Vui lòng đăng nhập vào ứng dụng trước."
+      ),
+      { statusCode: 404 }
+    );
+  }
+
+  // Cập nhật thông tin Telegram
+  user.telegramId = telegramId;
+  user.telegramChatId = chatId;
+  if (username) {
+    user.telegramUsername = username;
+  }
+
+  await user.save();
+
+  return user;
+};
