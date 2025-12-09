@@ -42,6 +42,6 @@ const router = express.Router();
  *                   type: string
  *                   example: "Telegram linked successfully"
  */
-router.post("/link", authenticate, linkTelegramAccount);
+router.post("/link", linkTelegramAccount);
 
 export default router;

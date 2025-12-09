@@ -8,6 +8,7 @@ import {
 } from "../controllers/driverController.js";
 import { validateRejectApplication } from "../middlewares/validateDriver.js";
 import { approveWithdrawRequest, rejectWithdrawRequest } from "../controllers/driverWalletController.js";
+import { getTransactionsDashboard } from "../controllers/transactionController.js";
 
 const router = express.Router();
 
@@ -240,6 +241,63 @@ router.post(
   authenticate,
   authorizeRoles("admin"),
   rejectWithdrawRequest
+);
+
+/**
+ * @swagger
+ * /api/admin/transactions:
+ *   get:
+ *     summary: (Admin/Staff) Lấy danh sách giao dịch để hiển thị dashboard
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema:
+ *           type: string
+ *           enum: [booking_income, commission_deduct, withdraw, adjustment]
+ *         description: Lọc theo loại giao dịch
+ *       - in: query
+ *         name: driverId
+ *         schema:
+ *           type: string
+ *         description: Lọc theo tài xế
+ *       - in: query
+ *         name: from
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Lọc từ ngày (ISO)
+ *       - in: query
+ *         name: to
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *         description: Lọc đến ngày (ISO)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 20
+ *     responses:
+ *       200:
+ *         description: Thành công
+ *       400:
+ *         description: Tham số không hợp lệ
+ *       403:
+ *         description: Không có quyền
+ */
+router.get(
+  "/transactions",
+  authenticate,
+  authorizeRoles("admin", "staff"),
+  getTransactionsDashboard
 );
 
 export default router;

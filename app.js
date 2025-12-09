@@ -15,8 +15,20 @@ import chatbotRoutes from "./src/routes/chatbotRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import deleteAccountRoutes from "./src/routes/deleteAccountRoutes.js";
 import telegramRoutes from "./src/routes/telegramRoutes.js";
+import rateLimit from "express-rate-limit";
 const app = express();
 app.use(express.json());
+
+const geminiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 phút
+  max: 5, // 5 request/phút mỗi IP
+  message: {
+    success: false,
+    message: "Bạn gửi quá nhanh, vui lòng thử lại sau 1 phút.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // CORS configuration (allowlist via CORS_ORIGIN env, comma-separated)
 // const allowedOrigins = (process.env.CORS_ORIGIN || "")
@@ -58,7 +70,7 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/payos", payOSRoutes);
 app.use("/api/driver/wallet", driverWalletRoutes);
-app.use("/api/chatbot", chatbotRoutes);
+app.use("/api/chatbot", geminiLimiter, chatbotRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/delete-account", deleteAccountRoutes);
 app.use("/api/telegram", telegramRoutes);
