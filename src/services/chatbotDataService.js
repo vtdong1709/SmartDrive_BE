@@ -9,6 +9,7 @@ const SERVICE_TYPE_NAMES = {
   hourly: "Theo giờ",
   daily: "Theo ngày",
   intercity: "Đi tỉnh (Liên tỉnh)",
+  motorcycle: "Lái xe hộ xe máy",
 };
 
 /**
@@ -29,7 +30,7 @@ export const getChatbotData = async () => {
       môTả: "Ứng dụng cho thuê tài xế lái xe hộ.",
       tínhNăngChính: [
         "Thuê tài xế lái hộ",
-        "Tìm tài xế di chuyển theo km, theo giờ, theo ngày, hoặc đi liên tỉnh",
+        "Tìm tài xế di chuyển theo km, theo giờ, theo ngày, đi liên tỉnh, hoặc lái xe hộ xe máy",
         "Thanh toán trực tuyến hoặc trực tiếp cho tài xế",
         "Chat trực tiếp với tài xế trong suốt chuyến đi bằng hệ thống chat",
         "Theo dõi vị trí tài xế real-time",
@@ -178,6 +179,11 @@ export const getChatbotData = async () => {
           tên: "Đi tỉnh (Liên tỉnh)",
           môTả: "Thuê tài xế lái xe hộ đi liên tỉnh, có phí quay đầu",
         },
+        {
+          loại: "motorcycle",
+          tên: "Lái xe hộ xe máy",
+          môTả: "Tài xế lái xe máy của khách, tính phí theo km di chuyển",
+        },
       ],
       phươngThứcThanhToán: [
         {
@@ -234,6 +240,7 @@ export const getChatbotData = async () => {
         "dich_vu_tai_xe_theo_cay_so - Dịch vụ tài xế theo cây số",
         "dich_vu_tai_xe_theo_ngay - Dịch vụ tài xế theo ngày",
         "dich_vu_tai_xe_lien_tinh - Dịch vụ tài xế liên tỉnh",
+        "dich_vu_lai_xe_ho_xe_may - Dịch vụ lái xe hộ xe máy",
       ],
     };
 
@@ -241,9 +248,9 @@ export const getChatbotData = async () => {
     const bookingInfo = {
       cáchĐặtXe: [
         "1. Đăng nhập vào ứng dụng",
-        "2. Chọn loại dịch vụ: Theo km, Theo giờ, Theo ngày, hoặc Đi tỉnh",
+        "2. Chọn loại dịch vụ: Theo km, Theo giờ, Theo ngày, Đi tỉnh, hoặc Lái xe hộ xe máy",
         "3. Nhập điểm đón - bắt buộc",
-        "4. Nhập điểm đến - bắt buộc cho 'Theo km' và 'Đi tỉnh', không cần cho 'Theo giờ' và 'Theo ngày'",
+        "4. Nhập điểm đến - bắt buộc cho 'Theo km', 'Đi tỉnh' và 'Lái xe hộ xe máy', không cần cho 'Theo giờ' và 'Theo ngày'",
         "5. Chọn thời gian bắt đầu - bắt buộc",
         "6. Chọn thời gian kết thúc - bắt buộc cho 'Theo giờ' và 'Theo ngày', không cần cho 'Theo km' và 'Đi tỉnh'",
         "7. Hệ thống sẽ tính giá và tìm tài xế gần nhất",
@@ -258,6 +265,10 @@ export const getChatbotData = async () => {
         },
         {
           loại: "Đi tỉnh (Liên tỉnh)",
+          yêuCầu: ["Điểm đón (bắt buộc)", "Điểm đến (bắt buộc)", "Thời gian bắt đầu (bắt buộc)", "Không cần thời gian kết thúc"],
+        },
+        {
+          loại: "Lái xe hộ xe máy",
           yêuCầu: ["Điểm đón (bắt buộc)", "Điểm đến (bắt buộc)", "Thời gian bắt đầu (bắt buộc)", "Không cần thời gian kết thúc"],
         },
         {

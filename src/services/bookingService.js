@@ -2,7 +2,7 @@ import axios from "axios";
 import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import { errorResponse } from "../utils/apiResponse.js";
-import Pricing from "../models/Pricing.js";
+import { getActivePricingByServiceType } from "./pricingService.js";
 import { onlineDrivers, pendingRequests } from "../sockets/socketHandler.js";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
@@ -247,6 +247,15 @@ async function getVietnamHolidays(year) {
   return holidayDates;
 }
 
+const resolveLocationText = (location) => {
+  if (!location) return "";
+  if (typeof location === "string") return location;
+  if (typeof location === "object") {
+    return location.address || `${location.lat},${location.lng}`;
+  }
+  return String(location);
+};
+
 export const calculateFareService = async (
   pickupLocation,
   dropoffLocation,
@@ -262,18 +271,10 @@ export const calculateFareService = async (
   const dayOfWeek = currentTime.getDay();
 
   // === Lấy bảng giá đang áp dụng ===
-  const activePricing = await Pricing.findOne({
+  const activePricing = await getActivePricingByServiceType(
     serviceType,
-    $or: [
-      { effectiveTo: null },
-      {
-        $and: [
-          { effectiveFrom: { $lte: currentTime } },
-          { effectiveTo: { $gte: currentTime } },
-        ],
-      },
-    ],
-  }).sort({ effectiveFrom: -1 });
+    currentTime
+  );
 
   if (!activePricing)
     throw new Error(`Không tìm thấy bảng giá cho loại dịch vụ: ${serviceType}`);
@@ -323,14 +324,18 @@ if (isHoliday) {
   // === Tính theo loại dịch vụ ===
   switch (serviceType) {
     case "per_km":
+    case "motorcycle":
     case "intercity": {
-      if (!pickupLocation || !dropoffLocation) 
+      const pickupText = resolveLocationText(pickupLocation);
+      const dropoffText = resolveLocationText(dropoffLocation);
+
+      if (!pickupText || !dropoffText)
         throw new Error("Vui lòng nhập đầy đủ điểm đi và điểm đến");
 
       const apiKey = process.env.GOOGLE_MAPS_API_KEY;
       const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
-        pickupLocation
-      )}&destinations=${encodeURIComponent(dropoffLocation)}&key=${apiKey}`;
+        pickupText
+      )}&destinations=${encodeURIComponent(dropoffText)}&key=${apiKey}`;
 
       const response = await axios.get(url);
       if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
@@ -350,11 +355,18 @@ if (isHoliday) {
         (minutes > 0 ? `${minutes} phút ` : "") +
         (seconds > 0 ? `${seconds} giây` : "");
 
-      if (serviceType === "per_km") {
+      if (serviceType === "per_km" || serviceType === "motorcycle") {
         const bracket =
           fareBrackets.find(
             (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
           ) || fareBrackets.at(-1);
+
+        if (!bracket?.pricePerKm) {
+          throw new Error(
+            `Bảng giá ${serviceType === "motorcycle" ? "xe máy" : "theo km"} chưa được cấu hình fareBrackets`
+          );
+        }
+
         fare += distanceKm * bracket.pricePerKm;
       } else {
         // intercity

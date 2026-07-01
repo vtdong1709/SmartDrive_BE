@@ -91,10 +91,11 @@ const router = express.Router();
  *                 example: "d2b54a17-86fd-4b7b-b2b7-3e893f9fa1f9"
  *               serviceType:
  *                 type: string
- *                 enum: ["per_km", "hourly", "daily", "intercity"]
+ *                 enum: ["per_km", "hourly", "daily", "intercity", "motorcycle"]
  *                 description: |
  *                   - `per_km`: Tính giá theo km (bắt buộc điểm đến, không cần endTime)  
  *                   - `intercity`: Đi liên tỉnh (bắt buộc điểm đến, không cần endTime)  
+ *                   - `motorcycle`: Lái xe hộ xe máy (bắt buộc điểm đến, tính theo km)
  *                   - `hourly`: Thuê theo giờ (bắt buộc endTime, không cần điểm đến, giới hạn tối đa 8 tiếng)  
  *                   - `daily`: Thuê theo ngày (bắt buộc endTime, không cần điểm đến, giới hạn tối đa 3 ngày)
  *               pickupLocation:
@@ -103,7 +104,7 @@ const router = express.Router();
  *                 example: "Quận 1, TP.HCM"
  *               dropoffLocation:
  *                 type: string
- *                 description: Chỉ bắt buộc nếu serviceType là 'per_km' hoặc 'intercity'
+ *                 description: Chỉ bắt buộc nếu serviceType là 'per_km', 'intercity' hoặc 'motorcycle'
  *                 example: "Quận Bình Thạnh, TP.HCM"
  *               startTime:
  *                 type: string
@@ -621,11 +622,11 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *               dropoffLocation:
  *                 type: string
  *                 example: "Quận 7, TP.HCM"
- *                 description: Điểm trả khách (bắt buộc nếu dịch vụ per_km hoặc intercity)
+ *                 description: Điểm trả khách (bắt buộc nếu dịch vụ per_km, intercity hoặc motorcycle)
  *               serviceType:
  *                 type: string
- *                 enum: [per_km, hourly, daily, intercity]
- *                 description: Loại dịch vụ (tính theo km, giờ, ngày hoặc đi tỉnh)
+ *                 enum: [per_km, hourly, daily, intercity, motorcycle]
+ *                 description: Loại dịch vụ (tính theo km, giờ, ngày, đi tỉnh hoặc lái xe hộ xe máy)
  *               startTime:
  *                 type: string
  *                 format: date-time
@@ -665,6 +666,13 @@ router.get("/status/:status", authenticate,authorizeRoles("admin"), getBookingsB
  *                 dropoffLocation: "Vũng Tàu"
  *                 startTime: "2025-10-06T08:00:00Z"
  *                 serviceType: "intercity"
+ *             motorcycle:
+ *               summary: Lái xe hộ xe máy (tính theo km)
+ *               value:
+ *                 pickupLocation: "Quận 1, TP.HCM"
+ *                 dropoffLocation: "Quận Bình Thạnh, TP.HCM"
+ *                 startTime: "2025-10-06T08:00:00Z"
+ *                 serviceType: "motorcycle"
  *     responses:
  *       200:
  *         description: Tính toán giá cước thành công

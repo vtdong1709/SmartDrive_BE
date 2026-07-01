@@ -55,6 +55,7 @@ const driverApplicationSchema = new mongoose.Schema(
         "dich_vu_tai_xe_theo_cay_so",   // Dịch vụ tài xế theo cây số
         "dich_vu_tai_xe_theo_ngay",     // Dịch vụ tài xế theo ngày
         "dich_vu_tai_xe_lien_tinh",     // Dịch vụ tài xế liên tỉnh
+        "dich_vu_lai_xe_ho_xe_may",     // Dịch vụ lái xe hộ xe máy
       ],
       default: [],
     },

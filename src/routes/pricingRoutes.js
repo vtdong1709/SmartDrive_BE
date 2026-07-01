@@ -36,7 +36,7 @@ const router = express.Router();
  *             properties:
  *               serviceType:
  *                 type: string
- *                 enum: [per_km, hourly, daily, intercity]
+ *                 enum: [per_km, hourly, daily, intercity, motorcycle]
  *               baseFare:
  *                 type: number
  *               fareBrackets:
@@ -164,6 +164,25 @@ const router = express.Router();
  *                 platformFee: 30000
  *                 effectiveFrom: "2025-01-01T00:00:00Z"
  *                 effectiveTo: "2025-12-31T23:59:59Z"
+ *
+ *             motorcycle:
+ *               summary: Lái xe hộ xe máy (tính theo km)
+ *               value:
+ *                 serviceType: "motorcycle"
+ *                 baseFare: 30000
+ *                 fareBrackets:
+ *                   - { from: 0, to: 5, pricePerKm: 8000 }
+ *                   - { from: 6, to: 15, pricePerKm: 6000 }
+ *                   - { from: 16, to: null, pricePerKm: 5000 }
+ *                 multipliers:
+ *                   after21h: 1.08
+ *                   after23h: 1.12
+ *                   weekend: 1.10
+ *                   holiday: 1.15
+ *                 waitingFeePerMin: 2000
+ *                 platformFee: 10000
+ *                 effectiveFrom: "2025-01-01T00:00:00Z"
+ *                 effectiveTo: null
  *     responses:
  *       200:
  *         description: Pricing created successfully

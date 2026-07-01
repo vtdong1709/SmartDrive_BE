@@ -4,7 +4,7 @@ const pricingSchema = new mongoose.Schema(
   {
     serviceType: {
       type: String,
-      enum: ["per_km", "hourly", "daily", "intercity"],
+      enum: ["per_km", "hourly", "daily", "intercity", "motorcycle"],
       required: true,
     },
 

@@ -6,7 +6,7 @@ export const createBooking = async (req, res) => {
     try {
       const {
         driverId,
-        serviceType, // per_km | hourly | daily | intercity
+        serviceType, // per_km | hourly | daily | intercity | motorcycle
         startTime,
         endTime,
         pickupLocation,
@@ -32,6 +32,7 @@ export const createBooking = async (req, res) => {
       switch (serviceType) {
         case "per_km":
         case "intercity":
+        case "motorcycle":
           if (!dropoffLocation) {
             return res
               .status(400)

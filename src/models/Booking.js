@@ -32,7 +32,7 @@ const bookingSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   serviceType: {
     type: String,
-    enum: ["per_km", "hourly", "daily", "intercity"],
+    enum: ["per_km", "hourly", "daily", "intercity", "motorcycle"],
     required: true,
   },
   createdAt: { type: Date, default: Date.now },
