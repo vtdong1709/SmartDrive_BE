@@ -33,6 +33,8 @@ const DriverTransactionSchema = new mongoose.Schema(
         "commission_deduct", // hoa hồng bị trừ (cash trip)
         "withdraw", // tài xế rút tiền
         "adjustment", // admin điều chỉnh tay
+        "shared_ride_income", // thu nhập xe ghép / bao xe
+        "self_drive_income", // thu nhập cho thuê xe tự lái
       ],
       required: true,
     },

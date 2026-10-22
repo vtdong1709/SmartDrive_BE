@@ -28,7 +28,11 @@ export const getSwaggerSpec = () => {
         },
       },
     },
-    apis: ["./src/routes/*.js"],
+    apis: [
+      "./src/routes/*.js",
+      "./src/modules/sharedRide/routes/*.js",
+      "./src/modules/selfDrive/routes/*.js",
+    ],
   };
 
   return swaggerJsDoc(options);

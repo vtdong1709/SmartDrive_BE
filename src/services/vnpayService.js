@@ -76,6 +76,28 @@ export const createVNPayPaymentService = async ({
     wallet.lastTopupRequest.orderCode = txnRef;
     wallet.lastTopupRequest.status = "pending";
     await wallet.save();
+  } else if (purpose === "shared_ride" || purpose === "shared_ride_charter") {
+    const { prepareSharedRidePayment } = await import(
+      "../modules/sharedRide/services/paymentHook.js"
+    );
+    const prepared = await prepareSharedRidePayment({
+      purpose,
+      referenceId,
+      orderCode: txnRef,
+    });
+    amountInt = prepared.amountInt;
+    orderInfo = prepared.orderInfo;
+  } else if (purpose === "self_drive" || purpose === "self_drive_deposit") {
+    const { prepareSelfDrivePayment } = await import(
+      "../modules/selfDrive/services/paymentHook.js"
+    );
+    const prepared = await prepareSelfDrivePayment({
+      purpose,
+      referenceId,
+      orderCode: txnRef,
+    });
+    amountInt = prepared.amountInt;
+    orderInfo = prepared.orderInfo;
   } else {
     throw Object.assign(new Error("purpose không hợp lệ"), { statusCode: 400 });
   }
@@ -111,11 +133,31 @@ export const createVNPayPaymentService = async ({
       { bookingCode: referenceId },
       { $set: { payment: paymentData } }
     );
-  } else {
+  } else if (purpose === "wallet_topup") {
     await DriverWallet.updateOne(
       { _id: referenceId },
       { $set: { lastTopupRequest: paymentData } }
     );
+  } else if (purpose === "shared_ride" || purpose === "shared_ride_charter") {
+    const { attachSharedRideCheckout } = await import(
+      "../modules/sharedRide/services/paymentHook.js"
+    );
+    await attachSharedRideCheckout({
+      purpose,
+      referenceId,
+      paymentData,
+      provider: "vnpay",
+    });
+  } else if (purpose === "self_drive" || purpose === "self_drive_deposit") {
+    const { attachSelfDriveCheckout } = await import(
+      "../modules/selfDrive/services/paymentHook.js"
+    );
+    await attachSelfDriveCheckout({
+      purpose,
+      referenceId,
+      paymentData,
+      provider: "vnpay",
+    });
   }
 
   return paymentData;
@@ -153,6 +195,24 @@ export const handleVNPayIPNService = async (query) => {
     : null;
 
   if (!booking && !wallet) {
+    const { settleSharedRidePayment } = await import(
+      "../modules/sharedRide/services/paymentHook.js"
+    );
+    const shared = await settleSharedRidePayment({
+      orderCode: txnRef,
+      amount,
+      isSuccess,
+    });
+    if (shared) return shared;
+    const { settleSelfDrivePayment } = await import(
+      "../modules/selfDrive/services/paymentHook.js"
+    );
+    const selfDrive = await settleSelfDrivePayment({
+      orderCode: txnRef,
+      amount,
+      isSuccess,
+    });
+    if (selfDrive) return selfDrive;
     throw Object.assign(
       new Error("Không tìm thấy booking hoặc ví tài xế tương ứng"),
       { statusCode: 404 }

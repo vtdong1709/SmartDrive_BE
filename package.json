@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test src/modules/sharedRide/__tests__/*.test.js src/modules/selfDrive/__tests__/*.test.js",
     "start": "node server.js",
     "bot": "node telegram-miniapp-be/bot.js",
     "dev": "nodemon server.js"

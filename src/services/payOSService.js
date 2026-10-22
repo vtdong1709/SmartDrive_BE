@@ -58,6 +58,28 @@ export const createPaymentLinkService = async ({
       wallet.lastTopupRequest.orderCode = orderCode;
       wallet.lastTopupRequest.status = "pending";
       await wallet.save();
+    } else if (purpose === "shared_ride" || purpose === "shared_ride_charter") {
+      const { prepareSharedRidePayment } = await import(
+        "../modules/sharedRide/services/paymentHook.js"
+      );
+      const prepared = await prepareSharedRidePayment({
+        purpose,
+        referenceId,
+        orderCode,
+      });
+      amountInt = prepared.amountInt;
+      description = prepared.orderInfo.slice(0, 25);
+    } else if (purpose === "self_drive" || purpose === "self_drive_deposit") {
+      const { prepareSelfDrivePayment } = await import(
+        "../modules/selfDrive/services/paymentHook.js"
+      );
+      const prepared = await prepareSelfDrivePayment({
+        purpose,
+        referenceId,
+        orderCode,
+      });
+      amountInt = prepared.amountInt;
+      description = prepared.orderInfo.slice(0, 25);
     } else {
       throw new Error("purpose không hợp lệ");
     }
@@ -106,6 +128,26 @@ export const createPaymentLinkService = async ({
         { _id: referenceId },
         { $set: { lastTopupRequest: paymentData } }
       );
+    } else if (purpose === "shared_ride" || purpose === "shared_ride_charter") {
+      const { attachSharedRideCheckout } = await import(
+        "../modules/sharedRide/services/paymentHook.js"
+      );
+      await attachSharedRideCheckout({
+        purpose,
+        referenceId,
+        paymentData,
+        provider: "payos",
+      });
+    } else if (purpose === "self_drive" || purpose === "self_drive_deposit") {
+      const { attachSelfDriveCheckout } = await import(
+        "../modules/selfDrive/services/paymentHook.js"
+      );
+      await attachSelfDriveCheckout({
+        purpose,
+        referenceId,
+        paymentData,
+        provider: "payos",
+      });
     }
 
     // 🔹 Trả dữ liệu cho client
@@ -156,6 +198,24 @@ export const handlePayOSWebhookService = async (body) => {
     : null;
 
   if (!booking && !wallet) {
+    const { settleSharedRidePayment } = await import(
+      "../modules/sharedRide/services/paymentHook.js"
+    );
+    const shared = await settleSharedRidePayment({
+      orderCode,
+      amount,
+      isSuccess,
+    });
+    if (shared) return shared;
+    const { settleSelfDrivePayment } = await import(
+      "../modules/selfDrive/services/paymentHook.js"
+    );
+    const selfDrive = await settleSelfDrivePayment({
+      orderCode,
+      amount,
+      isSuccess,
+    });
+    if (selfDrive) return selfDrive;
     throw Object.assign(
       new Error("Không tìm thấy booking hoặc ví tài xế tương ứng"),
       { statusCode: 404 }

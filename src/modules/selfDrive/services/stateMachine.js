@@ -1,0 +1,61 @@
+import { BOOKING_STATUS } from "../constants.js";
+
+const TRANSITIONS = {
+  [BOOKING_STATUS.PENDING_OWNER_APPROVAL]: [
+    BOOKING_STATUS.APPROVED,
+    BOOKING_STATUS.AWAITING_PAYMENT,
+    BOOKING_STATUS.REJECTED,
+    BOOKING_STATUS.CANCELLED,
+  ],
+  [BOOKING_STATUS.APPROVED]: [
+    BOOKING_STATUS.AWAITING_PAYMENT,
+    BOOKING_STATUS.CANCELLED,
+    BOOKING_STATUS.REJECTED,
+  ],
+  [BOOKING_STATUS.AWAITING_PAYMENT]: [
+    BOOKING_STATUS.CONFIRMED,
+    BOOKING_STATUS.CANCELLED,
+    BOOKING_STATUS.REJECTED,
+  ],
+  [BOOKING_STATUS.CONFIRMED]: [
+    BOOKING_STATUS.READY_FOR_PICKUP,
+    BOOKING_STATUS.CANCELLED,
+    BOOKING_STATUS.NO_SHOW,
+    BOOKING_STATUS.DISPUTED,
+  ],
+  [BOOKING_STATUS.READY_FOR_PICKUP]: [
+    BOOKING_STATUS.IN_USE,
+    BOOKING_STATUS.CANCELLED,
+    BOOKING_STATUS.NO_SHOW,
+    BOOKING_STATUS.DISPUTED,
+  ],
+  [BOOKING_STATUS.IN_USE]: [
+    BOOKING_STATUS.RETURN_INSPECTION,
+    BOOKING_STATUS.DISPUTED,
+  ],
+  [BOOKING_STATUS.RETURN_INSPECTION]: [
+    BOOKING_STATUS.COMPLETED,
+    BOOKING_STATUS.DISPUTED,
+  ],
+  [BOOKING_STATUS.COMPLETED]: [],
+  [BOOKING_STATUS.REJECTED]: [],
+  [BOOKING_STATUS.CANCELLED]: [],
+  [BOOKING_STATUS.NO_SHOW]: [],
+  [BOOKING_STATUS.DISPUTED]: [BOOKING_STATUS.COMPLETED, BOOKING_STATUS.CANCELLED],
+};
+
+export const canTransition = (from, to) => {
+  if (from === to) return true;
+  return (TRANSITIONS[from] || []).includes(to);
+};
+
+export const assertTransition = (from, to) => {
+  if (!canTransition(from, to)) {
+    throw Object.assign(
+      new Error(`Không thể chuyển booking từ ${from} sang ${to}`),
+      { statusCode: 400 }
+    );
+  }
+};
+
+export const shouldApplyPayment = (booking) => booking.paymentStatus !== "PAID";

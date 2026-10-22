@@ -8,6 +8,8 @@ import http from "http";
 import { Server } from "socket.io";
 import { setupSocket } from "./src/sockets/socketHandler.js";
 import { initSocket } from "./src/socket.js";
+import { startSharedRideJobs } from "./src/modules/sharedRide/jobs/expireHoldsJob.js";
+import { startSelfDriveJobs } from "./src/modules/selfDrive/jobs/reminderJob.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -30,6 +32,12 @@ const io = new Server(server, {
 // Gọi hàm setup socket
 setupSocket(io);
 initSocket(io);
+if (process.env.SHARED_RIDE_ENABLED !== "false") {
+  startSharedRideJobs();
+}
+if (process.env.SELF_DRIVE_ENABLED !== "false") {
+  startSelfDriveJobs();
+}
 
 // Lưu lại server và io để có thể import ở nơi khác
 export { io, server };

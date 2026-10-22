@@ -16,6 +16,8 @@ import chatbotRoutes from "./src/routes/chatbotRoutes.js";
 import chatRoutes from "./src/routes/chatRoutes.js";
 import deleteAccountRoutes from "./src/routes/deleteAccountRoutes.js";
 import telegramRoutes from "./src/routes/telegramRoutes.js";
+import sharedRideRoutes from "./src/modules/sharedRide/routes/sharedRideRoutes.js";
+import selfDriveRoutes from "./src/modules/selfDrive/routes/selfDriveRoutes.js";
 import rateLimit from "express-rate-limit";
 const app = express();
 app.use(express.json());
@@ -67,5 +69,11 @@ app.use("/api/chatbot", geminiLimiter, chatbotRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/delete-account", deleteAccountRoutes);
 app.use("/api/telegram", telegramRoutes);
+if (process.env.SHARED_RIDE_ENABLED !== "false") {
+  app.use("/api/shared-rides", sharedRideRoutes);
+}
+if (process.env.SELF_DRIVE_ENABLED !== "false") {
+  app.use("/api/self-drive", selfDriveRoutes);
+}
 
 export default app;
