@@ -6,10 +6,11 @@ export function successResponse(message, data = {}) {
   };
 }
 
-export function errorResponse(message, code) {
+export function errorResponse(message, code, errorCode) {
   return {
     success: false,
     message,
     code,
+    ...(errorCode ? { errorCode } : {}),
   };
 }

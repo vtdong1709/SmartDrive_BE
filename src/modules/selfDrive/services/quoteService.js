@@ -3,6 +3,8 @@ import { httpError } from "../httpError.js";
 import { computeQuote, haversineKm, isWithinDeliveryRadius } from "./quoteMath.js";
 import { getPublicVehicleService } from "./vehicleService.js";
 import { assertVehicleAvailable } from "./availabilityService.js";
+import { createQuote } from "../../../pricing/pricingEngine.js";
+import { PRICING_SERVICE } from "../../../pricing/constants.js";
 
 export const buildDeliveryFee = (vehicle, deliveryLocation) => {
   if (!deliveryLocation) return { eligible: true, fee: 0, distanceKm: 0 };
@@ -35,6 +37,20 @@ export const quoteVehicleService = async (vehicleId, payload) => {
   await assertVehicleAvailable(vehicle, startAt, endAt);
   const delivery = deliveryLocation ? buildDeliveryFee(vehicle, deliveryLocation) : { fee: 0, distanceKm: 0, eligible: true };
 
+  const engineQuote = await createQuote({
+    service: PRICING_SERVICE.SELF_DRIVE,
+    context: {
+      vehicleId,
+      startAt,
+      endAt,
+      deliveryLocation,
+      includeInsurance,
+      pickupMode: deliveryLocation ? "DELIVERY" : "PICKUP_AT_CAR",
+      persist: payload.persist !== false,
+    },
+    persist: payload.persist !== false,
+  });
+
   const quote = computeQuote({
     dailyPrice: vehicle.dailyPrice,
     hourlyOveragePrice: vehicle.hourlyOveragePrice,
@@ -48,12 +64,15 @@ export const quoteVehicleService = async (vehicleId, payload) => {
   });
 
   return {
+    quoteId: engineQuote.quoteId,
     vehicleId: vehicle._id,
     startAt,
     endAt,
     delivery,
-    depositAmount: vehicle.depositAmount,
-    quote,
+    depositAmount: engineQuote.deposit || vehicle.depositAmount,
+    amountPayableNow: engineQuote.amountPayableNow,
+    items: engineQuote.items,
+    quote: { ...quote, total: engineQuote.finalFare },
     note: "Deposit không nằm trong total. Thanh toán thuê xe và cọc tách biệt.",
   };
 };

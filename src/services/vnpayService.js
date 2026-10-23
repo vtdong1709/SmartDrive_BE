@@ -98,6 +98,17 @@ export const createVNPayPaymentService = async ({
     });
     amountInt = prepared.amountInt;
     orderInfo = prepared.orderInfo;
+  } else if (purpose === "ride_hailing") {
+    const { prepareRideHailingPayment } = await import(
+      "../modules/rideHailing/services/paymentHook.js"
+    );
+    const prepared = await prepareRideHailingPayment({
+      purpose,
+      referenceId,
+      orderCode: txnRef,
+    });
+    amountInt = prepared.amountInt;
+    orderInfo = prepared.orderInfo;
   } else {
     throw Object.assign(new Error("purpose không hợp lệ"), { statusCode: 400 });
   }
@@ -158,6 +169,16 @@ export const createVNPayPaymentService = async ({
       paymentData,
       provider: "vnpay",
     });
+  } else if (purpose === "ride_hailing") {
+    const { attachRideHailingCheckout } = await import(
+      "../modules/rideHailing/services/paymentHook.js"
+    );
+    await attachRideHailingCheckout({
+      purpose,
+      referenceId,
+      paymentData,
+      provider: "vnpay",
+    });
   }
 
   return paymentData;
@@ -213,6 +234,15 @@ export const handleVNPayIPNService = async (query) => {
       isSuccess,
     });
     if (selfDrive) return selfDrive;
+    const { settleRideHailingPayment } = await import(
+      "../modules/rideHailing/services/paymentHook.js"
+    );
+    const rideHailing = await settleRideHailingPayment({
+      orderCode: txnRef,
+      amount,
+      isSuccess,
+    });
+    if (rideHailing) return rideHailing;
     throw Object.assign(
       new Error("Không tìm thấy booking hoặc ví tài xế tương ứng"),
       { statusCode: 404 }

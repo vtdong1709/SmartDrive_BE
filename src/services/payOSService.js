@@ -80,6 +80,17 @@ export const createPaymentLinkService = async ({
       });
       amountInt = prepared.amountInt;
       description = prepared.orderInfo.slice(0, 25);
+    } else if (purpose === "ride_hailing") {
+      const { prepareRideHailingPayment } = await import(
+        "../modules/rideHailing/services/paymentHook.js"
+      );
+      const prepared = await prepareRideHailingPayment({
+        purpose,
+        referenceId,
+        orderCode,
+      });
+      amountInt = prepared.amountInt;
+      description = prepared.orderInfo.slice(0, 25);
     } else {
       throw new Error("purpose không hợp lệ");
     }
@@ -143,6 +154,16 @@ export const createPaymentLinkService = async ({
         "../modules/selfDrive/services/paymentHook.js"
       );
       await attachSelfDriveCheckout({
+        purpose,
+        referenceId,
+        paymentData,
+        provider: "payos",
+      });
+    } else if (purpose === "ride_hailing") {
+      const { attachRideHailingCheckout } = await import(
+        "../modules/rideHailing/services/paymentHook.js"
+      );
+      await attachRideHailingCheckout({
         purpose,
         referenceId,
         paymentData,
@@ -216,6 +237,15 @@ export const handlePayOSWebhookService = async (body) => {
       isSuccess,
     });
     if (selfDrive) return selfDrive;
+    const { settleRideHailingPayment } = await import(
+      "../modules/rideHailing/services/paymentHook.js"
+    );
+    const rideHailing = await settleRideHailingPayment({
+      orderCode,
+      amount,
+      isSuccess,
+    });
+    if (rideHailing) return rideHailing;
     throw Object.assign(
       new Error("Không tìm thấy booking hoặc ví tài xế tương ứng"),
       { statusCode: 404 }

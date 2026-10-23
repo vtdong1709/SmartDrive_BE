@@ -31,6 +31,8 @@ const bookingSchema = new mongoose.Schema(
     deliveryRequested: { type: Boolean, default: false },
     deliveryLocation: { type: placeSchema, default: null },
     quote: { type: Object, default: {} },
+    quoteId: { type: String, default: null },
+    pricingSnapshot: { type: Object, default: null },
     totalAmount: { type: Number, required: true },
     depositAmount: { type: Number, default: 0 },
     status: {

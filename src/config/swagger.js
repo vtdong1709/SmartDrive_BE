@@ -32,6 +32,8 @@ export const getSwaggerSpec = () => {
       "./src/routes/*.js",
       "./src/modules/sharedRide/routes/*.js",
       "./src/modules/selfDrive/routes/*.js",
+      "./src/modules/rideHailing/routes/*.js",
+      "./src/pricing/routes/*.js",
     ],
   };
 

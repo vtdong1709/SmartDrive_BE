@@ -16,9 +16,10 @@ export const createBooking = async (req, res) => {
         duration,
         paymentMethod,
         paymentStatus,
+        quoteId,
       } = req.body;
   
-      const customerId = req.user.id;
+      const customerId = req.user.id || req.user._id;
   
       if (!driverId || !serviceType || !startTime || !pickupLocation) {
         return res.status(400).json(
@@ -103,6 +104,7 @@ export const createBooking = async (req, res) => {
         price,
         paymentMethod,
         paymentStatus,
+        quoteId: quoteId || null,
         createdAt: new Date(),
       };
   
@@ -208,18 +210,39 @@ export const getBookingsByStatus = async (req, res) => {
 
 export const calculateFare = async (req, res) => {
     try {
-      const { pickupLocation, dropoffLocation, startTime, endTime, serviceType } = req.body;
+      const {
+        pickupLocation,
+        dropoffLocation,
+        startTime,
+        endTime,
+        serviceType,
+        pickup,
+        destination,
+        route,
+        distanceKm,
+        durationSeconds,
+      } = req.body;
       const result = await calculateFareService(
         pickupLocation,
         dropoffLocation,
         startTime,
         endTime,
-        serviceType
+        serviceType,
+        {
+          pickup,
+          destination,
+          route,
+          distanceKm,
+          durationSeconds,
+          userId: req.user?.id || req.user?._id || null,
+        }
       );
   
       res.status(200).json(successResponse("Tính toán giá cước thành công", result));
     } catch (error) {
-      res.status(error.code || 500).json(errorResponse(error.message, error.code));
+      res.status(error.statusCode || error.code || 500).json(
+        errorResponse(error.message, error.statusCode || error.code, error.errorCode)
+      );
     }
   };
 

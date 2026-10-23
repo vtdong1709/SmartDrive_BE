@@ -35,6 +35,7 @@ const DriverTransactionSchema = new mongoose.Schema(
         "adjustment", // admin điều chỉnh tay
         "shared_ride_income", // thu nhập xe ghép / bao xe
         "self_drive_income", // thu nhập cho thuê xe tự lái
+        "ride_hailing_income", // thu nhập đặt xe di chuyển
       ],
       required: true,
     },

@@ -1,0 +1,61 @@
+import { RIDE_STATUS } from "../constants.js";
+
+const T = {
+  [RIDE_STATUS.DRAFT]: [RIDE_STATUS.QUOTE_READY, RIDE_STATUS.CANCELLED_BY_CUSTOMER],
+  [RIDE_STATUS.QUOTE_READY]: [RIDE_STATUS.SEARCHING_DRIVER, RIDE_STATUS.CANCELLED_BY_CUSTOMER],
+  [RIDE_STATUS.SEARCHING_DRIVER]: [
+    RIDE_STATUS.DRIVER_ASSIGNED,
+    RIDE_STATUS.DRIVER_EN_ROUTE,
+    RIDE_STATUS.NO_DRIVER_FOUND,
+    RIDE_STATUS.CANCELLED_BY_CUSTOMER,
+  ],
+  [RIDE_STATUS.DRIVER_ASSIGNED]: [
+    RIDE_STATUS.DRIVER_EN_ROUTE,
+    RIDE_STATUS.CANCELLED_BY_CUSTOMER,
+    RIDE_STATUS.CANCELLED_BY_DRIVER,
+  ],
+  [RIDE_STATUS.DRIVER_EN_ROUTE]: [
+    RIDE_STATUS.DRIVER_ARRIVED,
+    RIDE_STATUS.CANCELLED_BY_CUSTOMER,
+    RIDE_STATUS.CANCELLED_BY_DRIVER,
+  ],
+  [RIDE_STATUS.DRIVER_ARRIVED]: [
+    RIDE_STATUS.WAITING_FOR_PASSENGER,
+    RIDE_STATUS.IN_PROGRESS,
+    RIDE_STATUS.NO_SHOW,
+    RIDE_STATUS.CANCELLED_BY_CUSTOMER,
+    RIDE_STATUS.CANCELLED_BY_DRIVER,
+  ],
+  [RIDE_STATUS.WAITING_FOR_PASSENGER]: [
+    RIDE_STATUS.IN_PROGRESS,
+    RIDE_STATUS.NO_SHOW,
+    RIDE_STATUS.CANCELLED_BY_CUSTOMER,
+    RIDE_STATUS.CANCELLED_BY_DRIVER,
+  ],
+  [RIDE_STATUS.IN_PROGRESS]: [RIDE_STATUS.COMPLETED],
+  [RIDE_STATUS.COMPLETED]: [],
+  [RIDE_STATUS.CANCELLED_BY_CUSTOMER]: [],
+  [RIDE_STATUS.CANCELLED_BY_DRIVER]: [],
+  [RIDE_STATUS.NO_DRIVER_FOUND]: [RIDE_STATUS.SEARCHING_DRIVER, RIDE_STATUS.CANCELLED_BY_CUSTOMER],
+  [RIDE_STATUS.NO_SHOW]: [],
+};
+
+export const canTransition = (from, to) => from === to || (T[from] || []).includes(to);
+
+export const assertTransition = (from, to) => {
+  if (!canTransition(from, to)) {
+    throw Object.assign(new Error(`Không thể chuyển ride từ ${from} sang ${to}`), {
+      statusCode: 400,
+      errorCode: "INVALID_RIDE_STATE",
+    });
+  }
+};
+
+export const shouldApplyPayment = (ride) => ride.paymentStatus !== "PAID";
+
+export const tryAssignDriver = (ride, driverId) => {
+  if (ride.driverId || ride.status !== "SEARCHING_DRIVER") {
+    return { ok: false, reason: "RIDE_ALREADY_ASSIGNED" };
+  }
+  return { ok: true, driverId };
+};

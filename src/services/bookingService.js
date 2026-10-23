@@ -1,16 +1,72 @@
-import axios from "axios";
 import mongoose from "mongoose";
 import Booking from "../models/Booking.js";
 import { errorResponse } from "../utils/apiResponse.js";
-import { getActivePricingByServiceType } from "./pricingService.js";
 import { onlineDrivers, pendingRequests } from "../sockets/socketHandler.js";
 import { v4 as uuidv4 } from "uuid";
 import { io } from "../../server.js";
 import DriverWallet from "../models/DriverWallet.js";
 import { sendNotification } from "../services/notificationService.js";
+import { createQuote, consumeQuote } from "../pricing/pricingEngine.js";
+import { snapshotFromQuote } from "../pricing/services/quoteService.js";
+import { calculateCommission } from "../pricing/services/commissionService.js";
+import { PRICING_SERVICE } from "../pricing/constants.js";
+
+const resolveDriverBookingPrice = async (bookingData) => {
+  if (bookingData.quoteId) {
+    const quote = await consumeQuote({
+      quoteId: bookingData.quoteId,
+      userId: bookingData.customerId,
+      service: PRICING_SERVICE.DRIVER_BOOKING,
+    });
+    return {
+      price: quote.finalFare,
+      quoteId: quote.quoteCode,
+      pricingSnapshot: snapshotFromQuote(quote),
+      distance: quote.distanceKm ?? bookingData.distance,
+      duration: quote.durationSeconds ?? bookingData.duration,
+    };
+  }
+  const quote = await createQuote({
+    service: PRICING_SERVICE.DRIVER_BOOKING,
+    userId: bookingData.customerId,
+    context: {
+      serviceType: bookingData.serviceType,
+      pickupLocation: bookingData.pickupLocation,
+      dropoffLocation: bookingData.dropoffLocation,
+      startTime: bookingData.startTime,
+      endTime: bookingData.endTime,
+      persist: true,
+      route:
+        Number(bookingData.distance) > 0
+          ? {
+              distanceKm: Number(bookingData.distance),
+              durationSeconds: Number(bookingData.durationSeconds || bookingData.duration || 0),
+            }
+          : undefined,
+      distanceKm: bookingData.distance,
+    },
+  });
+  return {
+    price: quote.finalFare,
+    quoteId: quote.quoteId,
+    pricingSnapshot: {
+      quoteId: quote.quoteId,
+      pricingVersionId: quote.pricingVersionId,
+      items: quote.items,
+      subtotal: quote.subtotal,
+      discount: quote.discount,
+      platformFee: quote.platformFee,
+      finalFare: quote.finalFare,
+    },
+    distance: quote.distanceKm ?? bookingData.distance,
+    duration: quote.durationSeconds ?? bookingData.duration,
+  };
+};
 
 export const createBookingService = async (bookingData) => {
-  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, price, distance ,duration, serviceType, paymentMethod} = bookingData;
+  const { customerId, driverId, startTime, endTime, pickupLocation, dropoffLocation, serviceType, paymentMethod } = bookingData;
+  const priced = await resolveDriverBookingPrice(bookingData);
+  const price = priced.price;
   const newBookingData  = {
     customerId,
     driverId,
@@ -18,10 +74,12 @@ export const createBookingService = async (bookingData) => {
     endTime,
     pickupLocation,
     dropoffLocation,
-    distance,
-    duration,
+    distance: priced.distance,
+    duration: priced.duration,
     status: "Pending",
     price,
+    quoteId: priced.quoteId,
+    pricingSnapshot: priced.pricingSnapshot,
     serviceType,
     paymentMethod,
     paymentStatus: "Pending",
@@ -32,7 +90,12 @@ export const createBookingService = async (bookingData) => {
   console.log("Booking created:", booking.bookingCode);
 
   if (paymentMethod === "toDriver") {
-    const commissionDebt = Math.round(price * 15/100);
+    const { commission: commissionDebt } = await calculateCommission({
+      service: PRICING_SERVICE.DRIVER_BOOKING,
+      subType: serviceType,
+      amount: price,
+      partnerType: "driver",
+    });
 
     const wallet = await DriverWallet.findOne({ driver: driverId });
     if (!wallet) {
@@ -231,245 +294,64 @@ export const getBookingsByStatusService = async (status, page = 1, limit = 10) =
   };
 };
 
-let cachedHolidays = {};
-
-async function getVietnamHolidays(year) {
-  if (cachedHolidays[year]) return cachedHolidays[year];
-
-  const url = `https://date.nager.at/api/v3/PublicHolidays/${year}/VN`;
-  const { data } = await axios.get(url);
-
-  // data = [{ date: "2025-01-01", localName: "...", name: "...", ... }]
-
-  const holidayDates = data.map((h) => h.date); // lấy YYYY-MM-DD
-
-  cachedHolidays[year] = holidayDates;
-  return holidayDates;
-}
-
-const resolveLocationText = (location) => {
-  if (!location) return "";
-  if (typeof location === "string") return location;
-  if (typeof location === "object") {
-    return location.address || `${location.lat},${location.lng}`;
-  }
-  return String(location);
-};
-
 export const calculateFareService = async (
   pickupLocation,
   dropoffLocation,
   startTime,
   endTime,       
   serviceType,
+  extra = {},
 ) => {
   if (!serviceType) throw new Error("Vui lòng chọn loại dịch vụ trước khi tính giá");
 
-  // === Lấy thời gian bắt đầu ===
-  const currentTime = new Date(startTime);
-  const hour = currentTime.getHours();
-  const dayOfWeek = currentTime.getDay();
+  const quote = await createQuote({
+    service: PRICING_SERVICE.DRIVER_BOOKING,
+    userId: extra.userId || null,
+    context: {
+      serviceType,
+      pickupLocation,
+      dropoffLocation,
+      pickup: extra.pickup,
+      destination: extra.destination,
+      startTime,
+      endTime,
+      route: extra.route,
+      distanceKm: extra.distanceKm,
+      durationSeconds: extra.durationSeconds,
+    },
+  });
 
-  // === Lấy bảng giá đang áp dụng ===
-  const activePricing = await getActivePricingByServiceType(
-    serviceType,
-    currentTime
-  );
-
-  if (!activePricing)
-    throw new Error(`Không tìm thấy bảng giá cho loại dịch vụ: ${serviceType}`);
-
-  const {
-    baseFare,
-    fareBrackets,
-    hourBrackets,
-    dayBrackets,
-    multipliers,
-    turnBackFees,
-    platformFee,
-  } = activePricing;
-
-  // === Áp dụng hệ số thời gian ===
-  let multiplier = 1;
-  if (hour >= 21 && hour < 23) multiplier *= multipliers.after21h || 1;
-  if (hour >= 23 || hour < 6) multiplier *= multipliers.after23h || 1;
-  if (dayOfWeek === 0 || dayOfWeek === 6) multiplier *= multipliers.weekend || 1;
-
-  // const holidays = ["2025-01-01", "2025-04-30", "2025-05-01", "2025-09-02"];
-  // const isHoliday = holidays.some(
-  //   (d) => currentTime.toISOString().slice(0, 10) === d
-  // );
-  // if (isHoliday) multiplier *= multipliers.holiday || 1;
-
-  // === Lấy năm hiện tại theo startTime ===
-const year = currentTime.getFullYear();
-const holidays = await getVietnamHolidays(year);
-
-const today = currentTime.toISOString().slice(0, 10);
-const isHoliday = holidays.includes(today);
-
-if (isHoliday) {
-  multiplier *= multipliers.holiday || 1;
-}
-
-
-  // === Khởi tạo các giá trị trả về ===
-  let fare = baseFare;
-  let distanceKm = 0;
-  let durationValue = 0;
-  let estimatedDuration = "";
-  let extraKmCharge = 0;
-  let turnBackFee = 0;
-
-  // === Tính theo loại dịch vụ ===
-  switch (serviceType) {
-    case "per_km":
-    case "motorcycle":
-    case "intercity": {
-      const pickupText = resolveLocationText(pickupLocation);
-      const dropoffText = resolveLocationText(dropoffLocation);
-
-      if (!pickupText || !dropoffText)
-        throw new Error("Vui lòng nhập đầy đủ điểm đi và điểm đến");
-
-      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${encodeURIComponent(
-        pickupText
-      )}&destinations=${encodeURIComponent(dropoffText)}&key=${apiKey}`;
-
-      const response = await axios.get(url);
-      if (response.data.status !== "OK") throw new Error("Lỗi từ Google Maps API");
-
-      const element = response.data.rows?.[0]?.elements?.[0];
-      if (!element || element.status !== "OK") throw new Error("Không tìm thấy lộ trình");
-
-      const distanceValue = element.distance.value;
-      durationValue = element.duration.value;
-      distanceKm = distanceValue / 1000;
-
-      const hours = Math.floor(durationValue / 3600);
-      const minutes = Math.floor((durationValue % 3600) / 60);
-      const seconds = durationValue % 60;
-      estimatedDuration =
-        (hours > 0 ? `${hours} giờ ` : "") +
-        (minutes > 0 ? `${minutes} phút ` : "") +
-        (seconds > 0 ? `${seconds} giây` : "");
-
-      if (serviceType === "per_km" || serviceType === "motorcycle") {
-        const bracket =
-          fareBrackets.find(
-            (b) => distanceKm >= b.from && (b.to === null || distanceKm <= b.to)
-          ) || fareBrackets.at(-1);
-
-        if (!bracket?.pricePerKm) {
-          throw new Error(
-            `Bảng giá ${serviceType === "motorcycle" ? "xe máy" : "theo km"} chưa được cấu hình fareBrackets`
-          );
-        }
-
-        fare += distanceKm * bracket.pricePerKm;
-      } else {
-        // intercity
-        let intercityFare = 0;
-        if (distanceKm <= 70) {
-          intercityFare = distanceKm * fareBrackets[0].pricePerKm;
-        } else if (distanceKm <= 100) {
-          intercityFare =
-            70 * fareBrackets[0].pricePerKm +
-            (distanceKm - 70) * fareBrackets[1].pricePerKm;
-        } else {
-          intercityFare =
-            70 * fareBrackets[0].pricePerKm +
-            30 * fareBrackets[1].pricePerKm +
-            (distanceKm - 100) * fareBrackets[2].pricePerKm;
-        }
-        fare += intercityFare;
-
-        const turnFee =
-          turnBackFees.find(
-            (f) => distanceKm >= f.fromKm && (f.toKm === null || distanceKm <= f.toKm)
-          ) || null;
-
-        if (turnFee) {
-          turnBackFee = turnFee.fee;
-          fare += turnBackFee;
-        }
-      }
-      break;
-    }
-
-    case "hourly": {
-      if (!startTime || !endTime) throw new Error("Dịch vụ theo giờ cần startTime và endTime");
-
-      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
-      if (durationMs <= 0) throw new Error("endTime phải lớn hơn startTime");
-
-      const durationHours = durationMs / (1000 * 60 * 60);
-      if (durationHours > 8) throw new Error("Dịch vụ theo giờ tối đa 8 tiếng mỗi ngày");
-
-      const bracket =
-        hourBrackets.find(
-          (b) =>
-            durationHours >= b.fromHour &&
-            (b.toHour === null || durationHours <= b.toHour)
-        ) || hourBrackets.at(-1);
-
-      fare += durationHours * bracket.pricePerHour;
-      break;
-    }
-
-    case "daily": {
-      if (!startTime || !endTime) throw new Error("Dịch vụ theo ngày cần startTime và endTime");
-
-      const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
-      const durationHours = durationMs / (1000 * 60 * 60);
-      const durationDays = Math.ceil(durationHours / 24);
-
-      if (durationDays > 3) throw new Error("Dịch vụ theo ngày tối đa 3 ngày");
-
-      const bracket =
-        dayBrackets.find(
-          (b) =>
-            durationDays >= b.fromDay &&
-            (b.toDay === null || durationDays <= b.toDay)
-        ) || dayBrackets.at(-1);
-
-      fare += durationDays * bracket.pricePerDay;
-      break;
-    }
-
-    default:
-      throw new Error(`Loại dịch vụ ${serviceType} chưa được hỗ trợ.`);
-  }
-
-  // === Áp dụng hệ số nhân ===
-  fare *= multiplier;
-
-  // === Cộng phí nền tảng ===
-  fare += platformFee;
-
-  // === Làm tròn ===
-  fare = Math.round(fare);
+  const hours = quote.durationSeconds ? quote.durationSeconds / 3600 : quote.metadata?.durationHours || 0;
+  const seconds = Number(quote.durationSeconds || 0);
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  const estimatedDuration =
+    seconds > 0
+      ? `${h > 0 ? `${h} giờ ` : ""}${m > 0 ? `${m} phút ` : ""}${s > 0 ? `${s} giây` : ""}`.trim()
+      : "";
 
   return {
     pickupLocation,
     dropoffLocation,
-    distanceKm,
+    distanceKm: quote.distanceKm,
     estimatedDuration,
-    durationSeconds: durationValue,
-    durationHours: serviceType === "hourly" ? (new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60) : 0,
-    durationDays: serviceType === "daily" ? Math.ceil((new Date(endTime).getTime() - new Date(startTime).getTime()) / (1000*60*60*24)) : 0,
-    baseFare,
-    multiplier,
-    extraKmCharge,
-    turnBackFee,
-    platformFee,
-    finalFare: fare,
+    durationSeconds: quote.durationSeconds,
+    durationHours: quote.metadata?.durationHours || hours,
+    durationDays: quote.metadata?.durationDays || 0,
+    baseFare: quote.baseFare,
+    multiplier: quote.multiplier,
+    extraKmCharge: 0,
+    turnBackFee: quote.metadata?.turnBackFee || 0,
+    platformFee: quote.platformFee,
+    finalFare: quote.finalFare,
     serviceType,
-   
+    quoteId: quote.quoteId,
+    items: quote.items,
+    expiresAt: quote.expiresAt,
+    estimatedFare: quote.finalFare,
   };
 };
-
 
 export const findDriver = async (req, res) => {
   try {

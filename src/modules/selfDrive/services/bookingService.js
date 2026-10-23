@@ -13,6 +13,9 @@ import { assertTransition, shouldApplyPayment } from "./stateMachine.js";
 import { assertCustomerEligible, publicKycSummary } from "./kycService.js";
 import { assertVehicleAvailable } from "./availabilityService.js";
 import { quoteVehicleService } from "./quoteService.js";
+import { consumeQuote } from "../../../pricing/pricingEngine.js";
+import { PRICING_SERVICE } from "../../../pricing/constants.js";
+import { snapshotFromQuote } from "../../../pricing/services/quoteService.js";
 import { getPublicVehicleService } from "./vehicleService.js";
 import { notifyUsers, emitSelfDrive } from "./notify.js";
 
@@ -42,7 +45,19 @@ export const createBookingService = async (user, payload) => {
     endAt,
     deliveryLocation,
     includeInsurance,
+    persist: !payload.quoteId,
   });
+  let pricingSnapshot = null;
+  if (payload.quoteId) {
+    const consumed = await consumeQuote({
+      quoteId: payload.quoteId,
+      userId: user._id,
+      service: PRICING_SERVICE.SELF_DRIVE,
+    });
+    quoted.quote.total = consumed.finalFare;
+    quoted.depositAmount = consumed.deposit;
+    pricingSnapshot = snapshotFromQuote(consumed);
+  }
 
   const type = vehicle.instantBookingEnabled
     ? BOOKING_TYPE.INSTANT_BOOK
@@ -70,6 +85,8 @@ export const createBookingService = async (user, payload) => {
           }
         : null,
       quote: quoted.quote,
+      quoteId: payload.quoteId || quoted.quoteId || null,
+      pricingSnapshot,
       totalAmount: quoted.quote.total,
       depositAmount: quoted.depositAmount,
       status,

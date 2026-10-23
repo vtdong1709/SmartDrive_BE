@@ -10,6 +10,7 @@ import { setupSocket } from "./src/sockets/socketHandler.js";
 import { initSocket } from "./src/socket.js";
 import { startSharedRideJobs } from "./src/modules/sharedRide/jobs/expireHoldsJob.js";
 import { startSelfDriveJobs } from "./src/modules/selfDrive/jobs/reminderJob.js";
+import { startRideHailingJobs } from "./src/modules/rideHailing/jobs/rideJobs.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -37,6 +38,9 @@ if (process.env.SHARED_RIDE_ENABLED !== "false") {
 }
 if (process.env.SELF_DRIVE_ENABLED !== "false") {
   startSelfDriveJobs();
+}
+if (process.env.RIDE_HAILING_ENABLED !== "false") {
+  startRideHailingJobs();
 }
 
 // Lưu lại server và io để có thể import ở nơi khác

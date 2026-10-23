@@ -30,6 +30,8 @@ const bookingSchema = new mongoose.Schema({
     default: "Pending",
   },
   price: { type: Number, required: true },
+  quoteId: { type: String, default: null },
+  pricingSnapshot: { type: Object, default: null },
   serviceType: {
     type: String,
     enum: ["per_km", "hourly", "daily", "intercity", "motorcycle"],

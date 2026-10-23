@@ -18,6 +18,8 @@ import deleteAccountRoutes from "./src/routes/deleteAccountRoutes.js";
 import telegramRoutes from "./src/routes/telegramRoutes.js";
 import sharedRideRoutes from "./src/modules/sharedRide/routes/sharedRideRoutes.js";
 import selfDriveRoutes from "./src/modules/selfDrive/routes/selfDriveRoutes.js";
+import rideHailingRoutes from "./src/modules/rideHailing/routes/rideHailingRoutes.js";
+import pricingEngineRoutes from "./src/pricing/routes/pricingEngineRoutes.js";
 import rateLimit from "express-rate-limit";
 const app = express();
 app.use(express.json());
@@ -59,6 +61,7 @@ app.use("/api/driver", driverRoutes);
 app.use("/api/driver", driverApplicationRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/pricing", pricingEngineRoutes);
 app.use("/api/pricing", pricingRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/upload", uploadRoutes);
@@ -74,6 +77,9 @@ if (process.env.SHARED_RIDE_ENABLED !== "false") {
 }
 if (process.env.SELF_DRIVE_ENABLED !== "false") {
   app.use("/api/self-drive", selfDriveRoutes);
+}
+if (process.env.RIDE_HAILING_ENABLED !== "false") {
+  app.use("/api/rides", rideHailingRoutes);
 }
 
 export default app;
